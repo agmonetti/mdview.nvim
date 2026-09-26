@@ -1,0 +1,23 @@
+/* Subset of familiar Markdown styles; keep within litehtml CSS support. */
+html, body { margin: 0; padding: 0; background-color: #0d1117; }
+body { color: #c9d1d9; font-family: sans-serif; font-size: 16px; line-height: 1.6; }
+.markdown-body { padding: 32px; }
+h1, h2, h3, h4, h5, h6 { color: #e6edf3; font-weight: 600; margin-top: 24px; margin-bottom: 14px; line-height: 1.3; }
+h1 { font-size: 2em; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+h2 { font-size: 1.5em; border-bottom: 1px solid #30363d; padding-bottom: 7px; }
+h3 { font-size: 1.25em; }
+p, ul, ol, blockquote, pre, table { margin-top: 0; margin-bottom: 16px; }
+li { margin-bottom: 4px; }
+a { color: #58a6ff; text-decoration: none; }
+strong { font-weight: 700; }
+code, pre { font-family: monospace; font-size: 14px; }
+code { color: #e6edf3; background-color: #30363d; padding: 2px 5px; border-radius: 3px; }
+pre { background-color: #161b22; padding: 16px; border-radius: 6px; }
+pre code { color: #c9d1d9; padding: 0; background-color: transparent; }
+blockquote { color: #8b949e; border-left: 4px solid #30363d; padding: 2px 16px; margin-left: 0; }
+table { border-collapse: collapse; width: 100%; }
+tr { border-top: 1px solid #30363d; }
+th, td { border: 1px solid #30363d; padding: 6px 13px; text-align: left; }
+th { font-weight: 600; background-color: #161b22; }
+hr { border: 0; border-top: 1px solid #30363d; margin: 24px 0; }
+img { max-width: 100%; }

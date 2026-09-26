@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# First MVP: Markdown -> HTML -> real image through litehtml/Cairo (no browser).
+set -euo pipefail
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+usage() {
+    echo "Usage: $0 input.md output.png [width=900]" >&2
+    echo "     $0 --html-only input.md output.html" >&2
+    exit 2
+}
+[[ $# -ge 2 ]] || usage
+html_only=false
+if [[ "${1:-}" == '--html-only' ]]; then
+    html_only=true
+    shift
+fi
+[[ $# -ge 2 && $# -le 3 ]] || usage
+input=$1
+output=$2
+width=${3:-900}
+[[ -f "$input" ]] || { echo "File not found: $input" >&2; exit 2; }
+command -v cmark-gfm >/dev/null || { echo 'cmark-gfm is missing. Install the cmark-gfm package.' >&2; exit 1; }
+if ! $html_only; then
+    [[ "$width" =~ ^[0-9]+$ ]] && (( 10#$width >= 320 && 10#$width <= 2400 )) || {
+        echo 'Valid width: 320..2400 px' >&2; exit 2;
+    }
+    [[ -x "$ROOT/build/mdview-render" ]] || {
+        echo "Build the renderer first: ./scripts/build.sh" >&2; exit 1;
+    }
+fi
+# Create the ephemeral HTML next to the Markdown so relative image URLs work.
+input_dir=$(cd -- "$(dirname -- "$input")" && pwd)
+html=$(mktemp -- "$input_dir/.mdview-preview.XXXXXXXX.html")
+trap 'rm -f -- "$html"' EXIT
+{
+    printf '%s\n' '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+    printf '<style>\n'
+    cat "$ROOT/styles/markdown.css"
+    printf '</style></head><body><main class="markdown-body">\n'
+    cmark-gfm --to html \
+        --extension table \
+        --extension strikethrough \
+        --extension autolink \
+        --extension tasklist \
+        --extension tagfilter \
+        < "$input"
+    printf '</main></body></html>\n'
+} > "$html"
+if $html_only; then
+    cp -- "$html" "$output"
+    echo "Generated HTML: $output"
+else
+    "$ROOT/build/mdview-render" "$html" "$output" "$width"
+fi
