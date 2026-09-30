@@ -147,6 +147,20 @@ Historical comparison is not byte-identical: the old `/tmp` traces, exact 400-ev
 
 The earlier heavy `factor06-20260930` exploratory sample remains locally but is explicitly rejected in its `validity.json`: the user observed stale source text overlaid on the raster, and its 240-chapter fixture was not comparable. The harness now explicitly redraws buffer transitions; the corrected real desktop screenshot was inspected without that overlay and is retained locally, not committed. This narrow surface check is not the user's manual smoothness/layer acceptance.
 
+### Manual Kitty checks
+
+Run these **inside local Kitty**, with your normal Neovim configuration providing image.nvim; an optional document path replaces README:
+
+```bash
+bash scripts/manual-base [document.md]
+bash scripts/manual-fluid [document.md]
+bash scripts/manual-layers [document.md]
+```
+
+Omit the bracketed argument to use README. Base forces raw/smoothing/layers off; fluid opts into raw + factor0.6 + clamp84 without layers; layers sets `FPLOG_RAW_ZBELOW=1` independently of smoothing. These scripts do not modify your configuration or global defaults.
+
+In each reader, try your touchpad, hold the arrow keys, use `gg`, and press `q` to close. Compare sustained movement and settling, not just a still image. For layers, check your command line, completion menu, and a real LSP hover (requires your configured server), then close and verify theme/window highlight restoration. Missing LSP hover is an unexercised prerequisite, not a substitute synthetic acceptance. Report perceived pauses, incorrect placement, stale overlays, or layer visibility; automated callback/ACK measurements do not replace your manual visual acceptance.
+
 ## Earlier prototype evidence
 
 - **Stage 1 validated:** rendered `examples/demo.md` to PNG and viewed it in Kitty.
