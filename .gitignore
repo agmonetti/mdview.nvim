@@ -3,3 +3,4 @@ third_party/litehtml/
 .mdview-preview.*.html
 *.png
 AGENTS.md
+.clangd
