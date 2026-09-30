@@ -1,0 +1,787 @@
+{
+  "before": {
+    "cpu": 2,
+    "parent_allowed_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "loadavg": "6.14 5.57 5.61 5/1240 42054",
+    "governor": "powersave",
+    "topology": {
+      "core_id": "2",
+      "physical_package_id": "0",
+      "thread_siblings_list": "2,6"
+    },
+    "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+    "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+    "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+  },
+  "viewport": [
+    948,
+    1012
+  ],
+  "repetitions": 5,
+  "discarded_runs": [
+    0
+  ],
+  "offset_policy": "11 equally spaced percent positions of max(0, document_height-1012), nearest integer y; repeated 3 cycles in identical order",
+  "frames_per_run": 33,
+  "fixtures": {
+    "tests/bench/fixture.md": {
+      "sha256": "cf16a15207d0894ff7f86cd03206ee16722e09dee6be91b9077f2113042e288e",
+      "snapshot": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/fixture.snapshot.md",
+      "css_sha256": "eac430e4ba490ce2c34b1e4a4f4008f3b2ed8c1f9f0b4ea8c2f671678d9527bf",
+      "runs": [
+        {
+          "run": 0,
+          "discarded": true,
+          "load_ms": 557.787,
+          "document_height": 35110.2,
+          "offsets_y": [
+            0,
+            3410,
+            6820,
+            10229,
+            13639,
+            17049,
+            20459,
+            23869,
+            27279,
+            30688,
+            34098
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.14 5.57 5.61 7/1239 42068",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 0.501299,
+              "p95": 1.83288
+            },
+            "doc_draw_ms": {
+              "p50": 22.7815,
+              "p95": 29.1895
+            },
+            "draw_ms": {
+              "p50": 23.4662,
+              "p95": 29.6477
+            },
+            "convert_ms": {
+              "p50": 3.59664,
+              "p95": 4.93208
+            },
+            "write_close_ms": {
+              "p50": 1.61107,
+              "p95": 2.64218
+            },
+            "total_ms": {
+              "p50": 28.9058,
+              "p95": 34.8011
+            }
+          }
+        },
+        {
+          "run": 1,
+          "discarded": false,
+          "load_ms": 498.047,
+          "document_height": 35110.2,
+          "offsets_y": [
+            0,
+            3410,
+            6820,
+            10229,
+            13639,
+            17049,
+            20459,
+            23869,
+            27279,
+            30688,
+            34098
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.14 5.57 5.61 9/1243 42086",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 0.504704,
+              "p95": 1.64127
+            },
+            "doc_draw_ms": {
+              "p50": 24.8386,
+              "p95": 30.6749
+            },
+            "draw_ms": {
+              "p50": 25.2572,
+              "p95": 31.2524
+            },
+            "convert_ms": {
+              "p50": 3.81787,
+              "p95": 6.16693
+            },
+            "write_close_ms": {
+              "p50": 1.73582,
+              "p95": 4.12528
+            },
+            "total_ms": {
+              "p50": 31.5284,
+              "p95": 37.755
+            }
+          }
+        },
+        {
+          "run": 2,
+          "discarded": false,
+          "load_ms": 612.287,
+          "document_height": 35110.2,
+          "offsets_y": [
+            0,
+            3410,
+            6820,
+            10229,
+            13639,
+            17049,
+            20459,
+            23869,
+            27279,
+            30688,
+            34098
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.85 5.72 5.66 10/1240 42097",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 0.526472,
+              "p95": 1.97265
+            },
+            "doc_draw_ms": {
+              "p50": 25.6217,
+              "p95": 32.2286
+            },
+            "draw_ms": {
+              "p50": 26.4582,
+              "p95": 32.7551
+            },
+            "convert_ms": {
+              "p50": 3.88161,
+              "p95": 5.59881
+            },
+            "write_close_ms": {
+              "p50": 1.94443,
+              "p95": 3.32647
+            },
+            "total_ms": {
+              "p50": 32.4477,
+              "p95": 40.4432
+            }
+          }
+        },
+        {
+          "run": 3,
+          "discarded": false,
+          "load_ms": 676.798,
+          "document_height": 35110.2,
+          "offsets_y": [
+            0,
+            3410,
+            6820,
+            10229,
+            13639,
+            17049,
+            20459,
+            23869,
+            27279,
+            30688,
+            34098
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.85 5.72 5.66 4/1238 42113",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 0.590178,
+              "p95": 2.13387
+            },
+            "doc_draw_ms": {
+              "p50": 28.3345,
+              "p95": 35.5537
+            },
+            "draw_ms": {
+              "p50": 28.9456,
+              "p95": 36.1439
+            },
+            "convert_ms": {
+              "p50": 4.74056,
+              "p95": 6.35212
+            },
+            "write_close_ms": {
+              "p50": 1.94013,
+              "p95": 4.33434
+            },
+            "total_ms": {
+              "p50": 35.7393,
+              "p95": 45.29
+            }
+          }
+        },
+        {
+          "run": 4,
+          "discarded": false,
+          "load_ms": 682.448,
+          "document_height": 35110.2,
+          "offsets_y": [
+            0,
+            3410,
+            6820,
+            10229,
+            13639,
+            17049,
+            20459,
+            23869,
+            27279,
+            30688,
+            34098
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.85 5.72 5.66 3/1239 42144",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 0.653155,
+              "p95": 2.48706
+            },
+            "doc_draw_ms": {
+              "p50": 27.3066,
+              "p95": 35.142
+            },
+            "draw_ms": {
+              "p50": 28.3591,
+              "p95": 35.8413
+            },
+            "convert_ms": {
+              "p50": 5.11963,
+              "p95": 6.71741
+            },
+            "write_close_ms": {
+              "p50": 2.11114,
+              "p95": 3.19531
+            },
+            "total_ms": {
+              "p50": 35.6831,
+              "p95": 43.8405
+            }
+          }
+        }
+      ]
+    },
+    "examples/demo.md": {
+      "sha256": "d6dd3e12be9b1fd1cfeba8d5d6bd2affd1ba0af5f8763e72f5c33854749be69f",
+      "snapshot": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/demo.snapshot.md",
+      "css_sha256": "eac430e4ba490ce2c34b1e4a4f4008f3b2ed8c1f9f0b4ea8c2f671678d9527bf",
+      "runs": [
+        {
+          "run": 0,
+          "discarded": true,
+          "load_ms": 188.636,
+          "document_height": 749.1,
+          "offsets_y": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.46 5.66 5.64 1/1239 42150",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 2.07547,
+              "p95": 2.91234
+            },
+            "doc_draw_ms": {
+              "p50": 4.74632,
+              "p95": 7.00169
+            },
+            "draw_ms": {
+              "p50": 6.98208,
+              "p95": 9.6936
+            },
+            "convert_ms": {
+              "p50": 6.44359,
+              "p95": 8.40408
+            },
+            "write_close_ms": {
+              "p50": 2.10023,
+              "p95": 3.64456
+            },
+            "total_ms": {
+              "p50": 16.6178,
+              "p95": 20.4598
+            }
+          }
+        },
+        {
+          "run": 1,
+          "discarded": false,
+          "load_ms": 70.8732,
+          "document_height": 749.1,
+          "offsets_y": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.46 5.66 5.64 6/1238 42158",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 2.21264,
+              "p95": 3.33086
+            },
+            "doc_draw_ms": {
+              "p50": 4.64012,
+              "p95": 7.88165
+            },
+            "draw_ms": {
+              "p50": 6.76082,
+              "p95": 10.5351
+            },
+            "convert_ms": {
+              "p50": 6.54182,
+              "p95": 8.92559
+            },
+            "write_close_ms": {
+              "p50": 2.52354,
+              "p95": 4.04875
+            },
+            "total_ms": {
+              "p50": 16.9918,
+              "p95": 22.8143
+            }
+          }
+        },
+        {
+          "run": 2,
+          "discarded": false,
+          "load_ms": 56.897,
+          "document_height": 749.1,
+          "offsets_y": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.46 5.66 5.64 1/1239 42167",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 1.94505,
+              "p95": 2.84387
+            },
+            "doc_draw_ms": {
+              "p50": 4.70322,
+              "p95": 7.80616
+            },
+            "draw_ms": {
+              "p50": 6.75772,
+              "p95": 9.70394
+            },
+            "convert_ms": {
+              "p50": 6.12164,
+              "p95": 8.82435
+            },
+            "write_close_ms": {
+              "p50": 2.00812,
+              "p95": 3.58145
+            },
+            "total_ms": {
+              "p50": 15.4665,
+              "p95": 22.0105
+            }
+          }
+        },
+        {
+          "run": 3,
+          "discarded": false,
+          "load_ms": 48.3135,
+          "document_height": 749.1,
+          "offsets_y": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.46 5.66 5.64 3/1240 42173",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 1.7991,
+              "p95": 2.68091
+            },
+            "doc_draw_ms": {
+              "p50": 3.90212,
+              "p95": 6.42725
+            },
+            "draw_ms": {
+              "p50": 5.90912,
+              "p95": 8.68836
+            },
+            "convert_ms": {
+              "p50": 5.64072,
+              "p95": 7.18743
+            },
+            "write_close_ms": {
+              "p50": 1.72567,
+              "p95": 3.46848
+            },
+            "total_ms": {
+              "p50": 14.8721,
+              "p95": 17.0468
+            }
+          }
+        },
+        {
+          "run": 4,
+          "discarded": false,
+          "load_ms": 46.716,
+          "document_height": 749.1,
+          "offsets_y": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "affinity": [
+            2
+          ],
+          "environment_after": {
+            "cpu": 2,
+            "parent_allowed_affinity": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "loadavg": "6.46 5.66 5.64 1/1246 42187",
+            "governor": "powersave",
+            "topology": {
+              "core_id": "2",
+              "physical_package_id": "0",
+              "thread_siblings_list": "2,6"
+            },
+            "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+            "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+            "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+          },
+          "statistics": {
+            "setup_ms": {
+              "p50": 2.07927,
+              "p95": 2.90533
+            },
+            "doc_draw_ms": {
+              "p50": 5.68893,
+              "p95": 6.94175
+            },
+            "draw_ms": {
+              "p50": 7.58372,
+              "p95": 9.345
+            },
+            "convert_ms": {
+              "p50": 5.88609,
+              "p95": 7.85897
+            },
+            "write_close_ms": {
+              "p50": 1.84231,
+              "p95": 3.4173
+            },
+            "total_ms": {
+              "p50": 16.5102,
+              "p95": 19.722
+            }
+          }
+        }
+      ]
+    }
+  },
+  "quantiles": "nearest rank: sorted[max(0, ceil(p*n)-1)]",
+  "measurement_scope": "Native phases only; excludes launcher, Neovim, terminal transfer, Kitty paint; JSON total authoritative (FRAME elapsed includes JSON reporting).",
+  "write_semantics": "ofstream open/write/implicit close, page-cache completion only; no fsync.",
+  "after": {
+    "cpu": 2,
+    "parent_allowed_affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "loadavg": "6.46 5.66 5.64 1/1246 42189",
+    "governor": "powersave",
+    "topology": {
+      "core_id": "2",
+      "physical_package_id": "0",
+      "thread_siblings_list": "2,6"
+    },
+    "runtime": "/home/agus-hy/Documentos/mdview-nvim-lite/tests/bench/results/native-profile/runtime",
+    "runtime_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime",
+    "repository_mount": "/ /dev/nvme0n1p2 ext4 rw,relatime"
+  }
+}

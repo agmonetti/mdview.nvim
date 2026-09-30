@@ -1,0 +1,86 @@
+{
+  "production_source_matches_build_input": true,
+  "comparisons": [
+    {
+      "fixture": "tests/bench/fixture.md",
+      "top": 0,
+      "rgba_byte_identical": true,
+      "samples": [
+        {
+          "binary": "production",
+          "sha256": "e048c29999a74db4f18bd992e6b2427f2f6a66cf7b2c9a61cc493cb1bd0d0e76",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "0",
+            "948",
+            "1012"
+          ]
+        },
+        {
+          "binary": "instrumented",
+          "sha256": "e048c29999a74db4f18bd992e6b2427f2f6a66cf7b2c9a61cc493cb1bd0d0e76",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "0",
+            "948",
+            "1012"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "tests/bench/fixture.md",
+      "top": 34098,
+      "rgba_byte_identical": true,
+      "samples": [
+        {
+          "binary": "production",
+          "sha256": "9ec9a3f52c40e46082ecf3aab3b389eb0c4ace6f1451ac219020fca70c54b5f3",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "34098",
+            "948",
+            "1012"
+          ]
+        },
+        {
+          "binary": "instrumented",
+          "sha256": "9ec9a3f52c40e46082ecf3aab3b389eb0c4ace6f1451ac219020fca70c54b5f3",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "34098",
+            "948",
+            "1012"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "examples/demo.md",
+      "top": 0,
+      "rgba_byte_identical": true,
+      "samples": [
+        {
+          "binary": "production",
+          "sha256": "7b8982e0631718f22132a564ef6fcde3cb4a0f7fbf8a9db4766b4fb082ec3ece",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "0",
+            "948",
+            "1012"
+          ]
+        },
+        {
+          "binary": "instrumented",
+          "sha256": "7b8982e0631718f22132a564ef6fcde3cb4a0f7fbf8a9db4766b4fb082ec3ece",
+          "bytes": 3837504,
+          "frame_position_dimensions": [
+            "0",
+            "948",
+            "1012"
+          ]
+        }
+      ]
+    }
+  ]
+}

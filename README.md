@@ -105,7 +105,7 @@ The 5 Hz/burst maxima include deliberate idle gaps after settling. Excluding tho
 | --- | --- |
 | F1 (`FPLOG_F1_CAIRO`) | Native p95 **80.90 ms** vs PNG baseline **43.74 ms**; direct Cairo PNG encoding remained costly. |
 | F3 (`FPLOG_F3_SHM`) | Native p95 gain over F2 **0.43 ms** at 957×1008 / **1.03 ms** at 1500×1000, below baseline IQR **2.58 ms**; retained simpler tmpfs-file transport. |
-| PNG0 (`FPLOG_C_PNG0`) | Native p95 **44.27 vs 43.74 ms**, no demonstrated benefit. GdkPixbuf supports PNG compression levels 0–9, but the saved C/base PNGs are byte-identical: actual compression0 was **not independently established** in that experiment. This does not prove uncompressed PNG is slower or that the API lacks compression control. |
+| PNG0 (`FPLOG_C_PNG0`) | **Not tested, not rejected:** saved C/base PNGs were byte-identical, so actual compression0 was not established. Production fixes `"compression", "1"`; GdkPixbuf supports levels 0–9. Those timings do not rank PNG0. |
 | P2 (`FPLOG_P2`) | Still quantized; historical displacement p95 **220.5 px**, input→ACK p95 **49.47 vs base 46.65 ms**. Saturation confounds that old comparison; no conclusive ranking claimed. |
 | Factor 0.25 | Final-position settling **344/381/414 ms** at 5/10/30 Hz, **423 ms** burst: over ~150 ms. |
 | Factor 0.4 | **200/194/222 ms**, **207 ms** burst: longer tail than 0.6. User still liked its perception; not removed or visually rejected. |
@@ -142,10 +142,19 @@ Metric definitions match the historical interval analysis:
 - **p50/p95:** nearest rank, sorted index `ceil(p*n)-1`. **Max:** largest interval. **Std:** sample standard deviation (`n-1`), undefined/null for fewer than two intervals.
 - **Final-target settle:** first transmission at the final target after the last input, minus that input's timestamp. **Final-target ACK:** that transmission's actual load ACK minus the last input.
 - **DRAW / FRAME / transmission / ACK counts** and no-op/boundary counts distinguish producer rejection, publication, transport response, and saturation. Load ACKs are requested only by benchmark wrappers; they do **not** prove compositor/presentation timing or zero displayed-frame drops.
+- **Raster-request settle (diagnosis):** first DRAW requesting the final integer raster y after the last input, minus that input's timestamp. Logged separately from transmission/ACK; reaching that integer y can precede the controller's exact subpixel snap, which need not issue another DRAW.
 
 Historical comparison is not byte-identical: the old `/tmp` traces, exact 400-event direction sequence, and historical README snapshot disappeared; actual window/cell dimensions are recorded rather than assumed. Compare fixture/viewport/input cadence alongside the numbers. The retained `factor06-readme-20260930` sample is the corrected fourfold-README run, at **948×1012**, with zero no-op/boundary inputs and successful ACKs for all transmissions. Its active p95 is **60.80/48.97/47.11/51.83 ms** and settling **259/315/454/1233 ms** at 5/10/30 Hz/burst: these do **not** reproduce the faster historical cadence. Native median draw times themselves are **32.14/35.02/35.85/38.13 ms**; fixture/environment differences prevent attributing a regression to smoothing. Full new/historical tables: [REPORT.md](REPORT.md).
 
 The earlier heavy `factor06-20260930` exploratory sample remains locally but is explicitly rejected in its `validity.json`: the user observed stale source text overlaid on the raster, and its 240-chapter fixture was not comparable. The harness now explicitly redraws buffer transitions; the corrected real desktop screenshot was inspected without that overlay and is retained locally, not committed. This narrow surface check is not the user's manual smoothness/layer acceptance.
+
+Controlled historical/current comparison, five runs per scenario with the first discarded:
+
+```bash
+./scripts/bench-diagnose --output tests/bench/results/my-diagnosis
+```
+
+This diagnosis runner compares the first committed raw+smoothing controller (`d01a8b0`; `a26f481` contains no Lua controller) against `bench-harness`, using isolated checkouts inside the result directory. It requires allowed CPUs 0/1/2 on distinct physical cores and pins Kitty/Neovim/renderer respectively; no governor or defaults are changed. It verifies identical native-source/CSS blobs before sharing a Release binary, alternates A/B order, records actual affinity/governor/load/filesystem, and reports medians of per-run p50/p95 plus between-run CV (`100 × sample std / mean`). New and historical factor0.6 values remain causally non-comparable until diagnosis; historical traces/fixture were not retained. See [REPORT.md](REPORT.md) for results and limitations.
 
 ### Manual Kitty checks
 

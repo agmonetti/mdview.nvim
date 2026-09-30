@@ -48,6 +48,8 @@ def summarize(trace):
             "global_intervals": interval_stats(intervals), "active_intervals": interval_stats(active),
             "idle_intervals_excluded": len(intervals) - len(active), "final_target_y": final_target,
             "final_target_settle_ms": final["start_ms"] - last_input if final else None,
+            "final_request_settle_ms": next((d["time_ms"] - last_input for d in draws
+                if d["time_ms"] >= last_input and d["y"] == final_target), None),
             "final_target_ack_ms": final["ack_ms"] - last_input if final and "ack_ms" in final else None,
             "input_periods": interval_stats([b["time_ms"] - a["time_ms"] for a, b in zip(trace["inputs"], trace["inputs"][1:])]),
             "revision_count": len({d["revision"] for d in draws})}
@@ -61,13 +63,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--factor", type=float, default=.6, help="explicit opt-in smoothing factor (default: 0.6)")
     parser.add_argument("--output", type=Path, help="new output directory inside this repository")
+    parser.add_argument("--controller-root", type=Path, default=ROOT, help="isolated revision checkout for matched A/B")
+    parser.add_argument("--renderer", type=Path, default=ROOT / "build/mdview-preview")
+    parser.add_argument("--kitty-cpu", type=int)
+    parser.add_argument("--nvim-cpu", type=int)
+    parser.add_argument("--renderer-cpu", type=int)
     args = parser.parse_args()
     if not 0 < args.factor <= 1:
         parser.error("--factor must be in (0, 1]")
     missing = [name for name in ("nvim", "kitty", "magick") if not shutil.which(name)]
     if missing:
         parser.error("missing installed prerequisites: " + ", ".join(missing))
-    if not os.access(ROOT / "build/mdview-preview", os.X_OK):
+    args.controller_root = args.controller_root.resolve()
+    args.renderer = args.renderer.resolve()
+    if not os.access(args.renderer, os.X_OK):
         parser.error("native renderer missing: run ./scripts/build.sh explicitly first")
     image = Path(os.environ.get("MDVIEW_IMAGE_PLUGIN", Path.home() / ".local/share/nvim/lazy/image.nvim")).expanduser().resolve()
     if not (image / "lua/image/init.lua").is_file():
@@ -77,6 +86,12 @@ def main():
     remote = [name for name in ("TMUX", "SSH_CLIENT", "SSH_TTY", "SSH_CONNECTION") if name in os.environ]
     if remote:
         parser.error("local non-multiplexed Kitty required; inherited environment markers: " + ", ".join(remote))
+    cpus = [args.kitty_cpu, args.nvim_cpu, args.renderer_cpu]
+    if any(cpu is not None for cpu in cpus):
+        if not shutil.which("taskset") or any(cpu is None or cpu not in os.sched_getaffinity(0) for cpu in cpus):
+            parser.error("all three CPU affinities must be supplied and allowed; taskset required")
+        if len(set(cpus)) != 3:
+            parser.error("Kitty, Neovim and renderer require separate CPUs")
     output = (args.output or ROOT / "tests/bench/results" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
     if not output.is_relative_to(ROOT):
         parser.error("--output must stay inside this repository")
@@ -89,8 +104,10 @@ def main():
     for name in list(env):
         if name.startswith("FPLOG_") or name in ("KITTY_WINDOW_ID", "KITTY_LISTEN_ON"):
             env.pop(name)
-    env.update(MDVIEW_BENCH_ROOT=str(ROOT), MDVIEW_BENCH_OUTPUT=str(output),
+    env.update(MDVIEW_BENCH_ROOT=str(args.controller_root), MDVIEW_BENCH_OUTPUT=str(output),
                MDVIEW_IMAGE_PLUGIN=str(image), MDVIEW_BENCH_FACTOR=str(args.factor),
+               MDVIEW_BENCH_RENDERER=str(args.renderer),
+               MDVIEW_BENCH_RENDERER_CPU=str(args.renderer_cpu) if args.renderer_cpu is not None else "",
                TMPDIR=str(output / "runtime"))
     (output / "runtime").mkdir()
     versions = {name: subprocess.run([name, "--version"], capture_output=True, text=True).stdout.splitlines()[0]
@@ -98,13 +115,20 @@ def main():
     (output / "launcher.json").write_text(json.dumps({"versions": versions, "factor": args.factor,
         "image_plugin": str(image), "fixture": "frozen fourfold README snapshot, tests/bench/fixture.md",
         "fixture_sha256": hashlib.sha256((output / "fixture.md").read_bytes()).hexdigest(),
+        "controller_root": str(args.controller_root), "renderer": str(args.renderer),
+        "renderer_sha256": hashlib.sha256(args.renderer.read_bytes()).hexdigest(),
+        "affinity_requested": {"kitty": args.kitty_cpu, "nvim": args.nvim_cpu, "renderer": args.renderer_cpu},
         "kitty_requested_window_pixels": [1000, 1060]}, indent=2) + "\n")
     command = ["kitty", "--config", "NONE", "--title", "mdview synthetic benchmark",
                "--override", "initial_window_width=1000", "--override", "initial_window_height=1060",
                "--override", "remember_window_size=no", "--override", "font_size=12",
-               "--override", "background_opacity=1", "--directory", str(ROOT),
-               "nvim", "--clean", "-u", str(ROOT / "tests/bench/init.lua"), "-i", "NONE", "-n",
-               str(output / "fixture.md")]
+               "--override", "background_opacity=1", "--directory", str(ROOT)]
+    nvim = ["nvim", "--clean", "-u", str(ROOT / "tests/bench/init.lua"), "-i", "NONE", "-n",
+            str(output / "fixture.md")]
+    if args.nvim_cpu is not None:
+        nvim = ["taskset", "-c", str(args.nvim_cpu)] + nvim
+        command = ["taskset", "-c", str(args.kitty_cpu)] + command
+    command += nvim
     try:
         with (output / "kitty.log").open("w") as log:
             result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=120)
@@ -119,6 +143,7 @@ def main():
                  "active": "Exclude intervals whose previous transmitted y equals the latest target at publication (exact integer equality).",
                  "quantiles": "Nearest rank: sorted[ceil(p*n)-1].", "std": "Sample standard deviation, n-1; null for n<2.",
                  "settle": "First transmission at the final target after the final input minus final-input time.",
+                 "request_settle": "First DRAW requesting the final integer raster y after final input minus final-input time; not exact floating-point controller snap.",
                  "ack": "Kitty APC load response with q=0 requested by the harness; not compositor/screen presentation.",
                  "inputs": "Installed mapping callbacks, not OS touchpad events. 20 down-wheel events at each rate; burst 400 alternating arrows/wheel in four 100-event down/up/down/up blocks, nominal 20 ms."},
                "scenarios": summaries}

@@ -3,6 +3,8 @@ local api = vim.api
 local root = assert(vim.env.MDVIEW_BENCH_ROOT)
 local output = assert(vim.env.MDVIEW_BENCH_OUTPUT)
 local factor = assert(tonumber(vim.env.MDVIEW_BENCH_FACTOR))
+local renderer = vim.env.MDVIEW_BENCH_RENDERER or root .. "/build/mdview-preview"
+local renderer_cpu = tonumber(vim.env.MDVIEW_BENCH_RENDERER_CPU)
 local trace, phase, mdview
 local start = vim.uv.hrtime()
 local function now() return (vim.uv.hrtime() - start) / 1e6 end
@@ -38,7 +40,7 @@ local function run()
     markdown={enabled=false}, asciidoc={enabled=false}, typst={enabled=false}, neorg={enabled=false}, syslang={enabled=false},
   }})
   mdview = require("mdview")
-  mdview.setup({raw=true, smooth=true, factor=factor, clamp=84, zbelow=false})
+  mdview.setup({raw=true, smooth=true, factor=factor, clamp=84, zbelow=false, renderer=renderer})
 
   -- Wrappers observe the real worker and installed image.nvim backend; no fake image or terminal geometry.
   local chansend, jobstart = vim.fn.chansend, vim.fn.jobstart
@@ -46,13 +48,15 @@ local function run()
     if trace and type(data) == "string" and data:match("^DRAW ") then
       local fields = vim.split(data, " ", {trimempty=true})
       trace.draws[#trace.draws+1] = {time_ms=now(), phase=phase, revision=tonumber(fields[2]),
-        sequence=tonumber(fields[3]), y=tonumber(fields[5]), height=tonumber(fields[7])}
+        sequence=tonumber(fields[3]), y=tonumber(fields[5]), height=tonumber(fields[7]),
+        current_y=mdview.status().current_y, target_y=mdview.status().target_y}
     end
     return chansend(channel, data)
   end
   local latest_frame
   vim.fn.jobstart = function(command, opts)
-    if type(command) == "table" and command[1] == root .. "/build/mdview-preview" then
+    local worker = type(command) == "table" and command[1] == renderer
+    if worker then
       local callback, pending = opts.on_stdout, ""
       opts.on_stdout = function(channel, chunks, event)
         pending = pending .. table.concat(chunks, "\n")
@@ -69,7 +73,22 @@ local function run()
         return callback(channel, chunks, event)
       end
     end
-    return jobstart(command, opts)
+    if worker and renderer_cpu then command = {"taskset", "-c", tostring(renderer_cpu), renderer} end
+    local job = jobstart(command, opts)
+    if worker and renderer_cpu and job > 0 then
+      local function affinity(pid)
+        local status = table.concat(vim.fn.readfile("/proc/" .. pid .. "/status"), "\n")
+        return assert(status:match("Cpus_allowed_list:%s*([^\n]+)"))
+      end
+      -- taskset execs the renderer in the same PID; wait until affinity is applied.
+      local pid = vim.fn.jobpid(job)
+      assert(vim.wait(1000, function() return affinity(pid) == tostring(renderer_cpu) end, 1),
+        "renderer affinity was not applied")
+      save("affinity.json", {nvim_pid=vim.fn.getpid(), nvim=affinity(vim.fn.getpid()),
+        renderer_pid=pid, renderer=affinity(pid), kitty_pid=tonumber(vim.env.KITTY_PID),
+        kitty=affinity(assert(tonumber(vim.env.KITTY_PID)))})
+    end
+    return job
   end
   local helpers = require("image/backends/kitty/helpers")
   local graphics, place = helpers.write_graphics, helpers.write_graphics_at

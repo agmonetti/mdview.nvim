@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Matched five-run A/B; keep checkouts, conditions and evidence in the repository."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import statistics
+import subprocess
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+SCENARIOS = ("5hz", "10hz", "30hz", "burst")
+
+
+def command(*args):
+    return subprocess.check_output(args, cwd=ROOT, text=True).strip()
+
+
+def snapshot():
+    cpus = {}
+    for cpu in sorted(os.sched_getaffinity(0)):
+        base = Path(f"/sys/devices/system/cpu/cpu{cpu}")
+        def value(path):
+            return path.read_text().strip() if path.exists() else None
+        cpus[str(cpu)] = {"core": value(base / "topology/core_id"),
+                         "siblings": value(base / "topology/thread_siblings_list"),
+                         "governor": value(base / "cpufreq/scaling_governor"),
+                         "frequency_khz": value(base / "cpufreq/scaling_cur_freq")}
+    return {"time_unix": time.time(), "loadavg": Path("/proc/loadavg").read_text().strip(),
+            "proc_stat": Path("/proc/stat").read_text(), "cpus": cpus}
+
+
+def aggregate(values):
+    mean = statistics.mean(values)
+    return {"median": statistics.median(values), "cv_percent": statistics.stdev(values) / mean * 100 if mean else None,
+            "runs": values}
+
+
+def summarize(output, revisions, runs):
+    rows = []
+    viewport = None
+    for arm in revisions:
+        for scenario in SCENARIOS:
+            summaries = []
+            for run in range(2, runs + 1):
+                summary = json.loads((output / f"{arm}-{run}/summary.json").read_text())
+                row = next(r for r in summary["scenarios"] if r["scenario"] == scenario)
+                vp = (row["viewport"]["width"], row["viewport"]["height"])
+                if viewport is None:
+                    viewport = vp
+                if vp != viewport or row["noop_inputs"] or row["boundary_inputs"] or row["ack_missing"] or row["ack_errors"]:
+                    raise RuntimeError("unmatched viewport or invalid trace")
+                summaries.append(row)
+            metrics = {"active_p50_ms": aggregate([r["active_intervals"]["p50_ms"] for r in summaries]),
+                       "active_p95_ms": aggregate([r["active_intervals"]["p95_ms"] for r in summaries]),
+                       "request_settle_ms": aggregate([r["final_request_settle_ms"] for r in summaries]),
+                       "transmission_settle_ms": aggregate([r["final_target_settle_ms"] for r in summaries]),
+                       "ack_settle_ms": aggregate([r["final_target_ack_ms"] for r in summaries])}
+            rows.append({"arm": arm, "scenario": scenario, "metrics": metrics})
+    result = {"revisions": revisions, "viewport": viewport, "retained_runs": runs - 1,
+              "cv_definition": "100 * sample standard deviation / arithmetic mean of per-run statistic; n-1",
+              "rows": rows}
+    (output / "comparison.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument("--summarize-only", action="store_true", help="recompute metrics from existing raw traces without rerunning Kitty")
+    args = parser.parse_args()
+    if args.runs < 5:
+        parser.error("at least five runs; first discarded")
+    output = args.output.resolve()
+    if not output.is_relative_to(ROOT):
+        parser.error("output must stay inside the repository")
+    if args.summarize_only:
+        import runpy
+        scroll = runpy.run_path(str(ROOT / "scripts/bench-scroll"))
+        metadata = json.loads((output / "conditions.json").read_text())
+        for arm in metadata["revisions"]:
+            for run in range(1, metadata["runs"] + 1):
+                folder = output / f"{arm}-{run}"
+                summary = json.loads((folder / "summary.json").read_text())
+                summary["scenarios"] = [scroll["summarize"](json.loads((folder / f"{name}.json").read_text()))
+                                        for name in SCENARIOS]
+                summary["definitions"]["request_settle"] = "First DRAW at final integer raster y minus last-input time; not exact subpixel snap."
+                (folder / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+        summarize(output, metadata["revisions"], metadata["runs"])
+        return
+    if output.exists():
+        parser.error("choose a new output directory to preserve prior evidence")
+    output.mkdir(parents=True)
+    revisions = {"A": command("git", "rev-parse", "d01a8b0"), "B": command("git", "rev-parse", "bench-harness")}
+    blobs = {arm: {path: command("git", "rev-parse", f"{revision}:{path}")
+                   for path in ("src/preview.cpp", "styles/markdown.css")} for arm, revision in revisions.items()}
+    if blobs["A"] != blobs["B"]:
+        raise RuntimeError("native source or CSS differs: separate matched renderer builds required")
+    cpus = {"kitty": 0, "nvim": 1, "renderer": 2}
+    topology = snapshot()
+    cores = [topology["cpus"][str(cpu)]["core"] for cpu in cpus.values()]
+    if len(set(cores)) != 3:
+        raise RuntimeError("CPUs 0/1/2 must be allowed and on three distinct physical cores")
+    metadata = {"revisions": revisions, "identical_source_blobs": blobs, "affinity": cpus,
+                "runs": args.runs, "discarded_run": 1, "order": "A/B odd rounds, B/A even rounds",
+                "filesystem": command("findmnt", "-T", str(output), "-o", "TARGET,FSTYPE,SOURCE"),
+                "before": topology,
+                "fixture_sha256": hashlib.sha256((ROOT / "tests/bench/fixture.md").read_bytes()).hexdigest(),
+                "shared_renderer": "Identical native source/CSS; both arms use the same Release binary and current installed dependencies."}
+    (output / "conditions.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    for arm, revision in revisions.items():
+        subprocess.run(["git", "worktree", "add", "--detach", str(output / f"checkout-{arm}"), revision], cwd=ROOT, check=True)
+    for run in range(1, args.runs + 1):
+        for arm in (("A", "B") if run % 2 else ("B", "A")):
+            folder = output / f"{arm}-{run}"
+            before = snapshot()
+            result = subprocess.run([str(ROOT / "scripts/bench-scroll"), "--output", str(folder),
+                "--controller-root", str(output / f"checkout-{arm}"), "--renderer", str(ROOT / "build/mdview-preview"),
+                "--kitty-cpu", "0", "--nvim-cpu", "1", "--renderer-cpu", "2"], cwd=ROOT, capture_output=True, text=True)
+            (output / f"{arm}-{run}-launcher.log").write_text(result.stdout + result.stderr)
+            (output / f"{arm}-{run}-conditions.json").write_text(json.dumps({"before": before, "after": snapshot()}, indent=2) + "\n")
+            print(f"{arm} run {run}: exit {result.returncode}", flush=True)
+            if result.returncode:
+                raise RuntimeError(f"failed {arm}-{run}; inspect retained log, no partial acceptance")
+    metadata["after"] = snapshot()
+    (output / "conditions.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    summarize(output, revisions, args.runs)
+
+
+if __name__ == "__main__":
+    main()

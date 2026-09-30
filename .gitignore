@@ -11,3 +11,16 @@ tests/bench/results/**/*.log
 tests/bench/results/**/fixture.md
 tests/bench/*.sock*
 __pycache__/
+!tests/bench/results/diagnosis-20260930/
+tests/bench/results/diagnosis-20260930/*
+!tests/bench/results/diagnosis-20260930/comparison.json
+!tests/bench/results/diagnosis-20260930/*conditions.json
+!tests/bench/results/diagnosis-20260930/[AB]-[1-5]/
+tests/bench/results/diagnosis-20260930/[AB]-[1-5]/*
+!tests/bench/results/diagnosis-20260930/[AB]-[1-5]/*.json
+!tests/bench/results/native-profile/
+tests/bench/results/native-profile/*
+!tests/bench/results/native-profile/*.json
+!tests/bench/results/native-profile/*.jsonl
+!tests/bench/results/native-profile/*.snapshot.md
+!tests/bench/results/native-profile/*.snapshot.css

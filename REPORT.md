@@ -76,7 +76,7 @@ Historical encoding/transport data: five runs, first discarded, medians of per-r
 | --- | --- | --- |
 | F1 / `FPLOG_F1_CAIRO` | Cairo direct PNG native p95 **80.90ms**, input→loadACK p95 **121.50ms**, vs PNG baseline **43.74/86.81ms**. Encode p95 **68.50ms**. | Not selected: bypassing pixbuf did not compensate for slower encoding. F2 raw native p95 **21.60ms**, input→ACK **38.68ms** in that study. |
 | F3 / `FPLOG_F3_SHM` | POSIX shared-memory raw native p95 **21.17ms** vs F2 tmpfs-file **21.60ms**, difference **0.43ms**; at1500×1000 difference **1.03ms**. Both smaller than earlier baseline p95 IQR **2.58ms**. | Not selected: marginal gain does not justify more shared-memory lifecycle complexity. These measurements do not establish a TLB/mmap causal explanation. |
-| PNG0 / `FPLOG_C_PNG0` | **Invalid experiment:** stored `check-C-0.dat` and `check-base-0.dat` are byte-identical PNGs (282105 bytes, same SHA-256). The recorded native/input→ACK timings do not compare distinct compression treatments. | Excluded from performance conclusions: compression0 was not demonstrated, so this measurement supports neither a benefit nor a rejection of genuine PNG0. GdkPixbuf does expose PNG compression control; failure of the historical intervention remains unresolved. |
+| PNG0 / `FPLOG_C_PNG0` | **Not tested:** stored `check-C-0.dat` and `check-base-0.dat` were byte-identical PNGs (282105 bytes, same SHA-256). The recorded native/input→ACK timings do not compare distinct compression treatments. | Neither selected nor rejected on performance: compression0 was not demonstrated. GdkPixbuf exposes PNG compression control; production `src/preview.cpp` fixes `"compression", "1"`. Whether the vanished historical experiment actually changed that call cannot now be verified. |
 | P2 / `FPLOG_P2` | Event-interval buckets1/2/3 rows. Historical displacement p95 **220.5px** vs saturated base **252px**; latest-input→ACK p95 **49.47ms** vs **46.65ms**. | Not selected for the reference: still quantized per-event movement and no latency improvement in that sample. Old saturation confounds strict ranking; this is not a conclusive controlled rejection of every adaptive-step approach. |
 | Smoothing0.25 | Final-position settle **344/381/414ms** at5/10/30Hz, burst**423ms**. | Not the reference: exceeds~150ms settling target. Still accepted as a tuning value. |
 | Smoothing0.4 | Settle **200/194/222ms**, burst**207ms**. User nevertheless reported good perception. | Not the reference in favor of0.6: longer measured tail, **not** visually rejected or removed. Legacy implicit factor preserved. |
@@ -120,4 +120,100 @@ Final-target transmission settle / load ACK: **259.38/270.07ms**, **315.38/321.3
 
 **Observed conclusion:** this rerun does **not** confirm the historical ~20ms active cadence. Native FRAME median timings themselves were32.14/35.02/35.85/38.13ms. The present fixture, viewport and burst directions differ; the data do not isolate a controller regression or another cause. No algorithm change, factor retuning or extra performance sweep was made to force agreement. ACK is not screen presentation; synthetic mappings are not physical touchpad input.
 
+**Comparability hold:** the new factor0.6 values must not be compared causally with the historical values until the controlled `bench-diagnosis` investigation below is complete. The earlier ~20ms figures remain historical observations, not a current performance guarantee.
+
 **User-reported harness failure and correction:** the first exploratory240-chapter run displayed stale source text superposed with the raster. That sample is excluded from accepted comparison (`tests/bench/results/factor06-20260930/validity.json`). The harness had not explicitly redrawn the TUI after replacing the source buffer inside its synchronous callback-driven run. It now redraws buffer transitions before measurement. The corrected real-desktop screenshot was inspected: only the proportional raster appears in the preview, without stale monospaced source text. Screenshot and rejected artifacts remain local inside the result directories; generated screenshots are not committed. This is one corrected surface observation, not universal visual acceptance.
+
+## Controlled diagnosis — 2026-09-30
+
+Work branch: `bench-diagnosis`. Production renderer/controller, defaults, factor and layer behavior are unchanged. This section records newly executed measurements, not extrapolations from the lost historical traces.
+
+### Conditions and A/B contract
+
+- **A:** `d01a8b02fd564870adf8ab4d75eff61f57b4d225`, the first committed raw+smoothing controller. `a26f481` has the native worker but no Lua controller, so cannot run this workload.
+- **B:** `bench-harness` at `d7ab0b9911cab9104cec76228a2949175618e361`.
+- Identical native-source blob `a8a97adbeeedfe8168f57dfbc9f4ddb0cdf13c86` and CSS blob `c6fbbd27757c57659e595beda38787892da42e1a`. Both arms use the same rebuilt/up-to-date Release binary and installed libraries; its SHA-256 is recorded per launch. The only production Lua differences concern opt-in zbelow setup/validation; layers are off in both arms.
+- Same frozen `tests/bench/fixture.md`, raw RGBA, factor0.6, clamp84px, 16ms smoothing timer, middle start; observed viewport **948×1012**, cell12×23px. Same callbacks/directions as the persistent harness. Five launches per arm, each covering all four scenarios; first launch per arm discarded, four retained. Alternating round order A/B, B/A, A/B, B/A, A/B.
+- **Affinity succeeded:** Kitty CPU0, Neovim CPU1, renderer CPU2 in every launch, verified through `/proc/<pid>/status`. These are physical cores0/1/2; SMT siblings4/5/6 were not reserved. Pinning is not exclusive-core isolation.
+- Governor **powersave**, unchanged. Sampled frequencies on CPUs0/1/2 ranged approximately **0.80–1.80GHz**. Before/after launch load averages ranged **4.14–5.82 / 5.35–6.26 / 5.56–5.84** (1/5/15min). CPU busy fractions over launch windows: CPU0 **31.1–51.5%**, CPU1 **30.9–51.1%**, CPU2 **86.2–91.5%**. This was an active desktop, not an idle-machine benchmark.
+- Runtime files are in the repository on **ext4**, `/dev/nvme0n1p2`, not historical `/tmp` tmpfs. Both A/B arms share that condition. Native profiling below also uses repository ext4; no filesystem/governor/system settings were changed.
+- All **3,766** retained input-phase DRAWs produced FRAMEs, transmissions and OK load ACKs. Zero missing ACKs, no-op callbacks or boundary callbacks; fixed viewport/revision. A real desktop capture from B run5 was inspected: proportional raster present without source-text superposition. No new touchpad-perception or presentation-timing claim.
+
+Numbers below are **medians of the four retained per-run statistics**. Quantiles are nearest rank; `CV = 100 × sample_std(per-run statistic) / mean(per-run statistic)`, `n-1`. CV is between-run variability, not within-run jitter or an equivalence confidence interval.
+
+### A/B active transmission cadence
+
+| Scenario | A p50 ms | A CV p50 | A p95 ms | A CV p95 | B p50 ms | B CV p50 | B p95 ms | B CV p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 Hz | 32.97 | 3.87% | 42.15 | 5.50% | 33.02 | 0.76% | 39.71 | 2.50% |
+| 10 Hz | 32.98 | 1.33% | 40.75 | 4.30% | 33.32 | 1.23% | 40.88 | 8.00% |
+| 30 Hz | 33.09 | 1.89% | 40.39 | 5.70% | 32.22 | 5.83% | 36.87 | 5.58% |
+| Burst | 33.59 | 1.84% | 43.48 | 3.82% | 33.41 | 1.73% | 39.87 | 5.40% |
+
+These are consecutive Kitty transmission starts while movement remains active, excluding a gap whose previous published integer y already equals its then-current target. They do not measure screen presentation.
+
+### Settling: endpoint definitions and normalization
+
+The existing harness's `final_target_settle_ms` is exactly:
+
+`first transmission.start_ms >= last_input.time_ms with transmission.y == last_input.target_y, minus last_input.time_ms`.
+
+It does **not** mean the time the controller first sets its internal floating-point `current_y` to the target. `final_target_ack_ms` adds the delay until that transmission's load ACK is delivered to Neovim.
+
+The diagnosis also computes `final_request_settle_ms`: first post-input **DRAW requesting the final integer raster y**, minus the last-input timestamp. This removes the final frame's production/delivery time. It is a raster-request endpoint, **not** the exact internal subpixel snap: the controller can already have requested the final integer y before snapping, and that later snap need not issue another DRAW. An attempted equality-only `current_y`/DRAW metric was therefore null in some traces; aggregation was corrected from the retained raw traces, without rerunning or discarding valid runs.
+
+| Arm / scenario | Final raster request ms | CV request | Final transmission ms | CV transmission | Final load ACK ms | CV ACK |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A / 5 Hz | 207.43 | 6.40% | 240.93 | 5.80% | 248.79 | 5.70% |
+| B / 5 Hz | 202.21 | 7.50% | 238.46 | 6.74% | 245.38 | 6.33% |
+| A / 10 Hz | 214.48 | 7.60% | 244.77 | 6.76% | 252.43 | 6.69% |
+| B / 10 Hz | 219.09 | 8.04% | 251.98 | 6.73% | 258.11 | 6.86% |
+| A / 30 Hz | 304.50 | 7.95% | 336.18 | 6.22% | 342.51 | 6.12% |
+| B / 30 Hz | 250.01 | 22.91% | 282.58 | 20.73% | 289.88 | 20.27% |
+| A / burst | 913.85 | 8.62% | 944.48 | 8.45% | 952.69 | 8.42% |
+| B / burst | 832.86 | 6.03% | 861.70 | 5.82% | 868.97 | 5.78% |
+
+The older study described settling as “last event until final position,” with ACK separately. Its script/raw traces are gone: whether that position timestamp meant internal snap, raster request or publication cannot now be independently verified. Do not assert an exact historical endpoint match. Both A/B arms above have been recalculated with **the same explicit raster-request and transmission definitions**.
+
+The retained single-run `factor06-readme-20260930` traces are independently recalculable:
+
+| Scenario | Recalculated final raster request ms | Existing final transmission ms |
+| --- | ---: | ---: |
+| 5 Hz | 224.84 | 259.38 |
+| 10 Hz | 279.37 | 315.38 |
+| 30 Hz | 419.07 | 453.69 |
+| Burst | 1199.16 | 1232.51 |
+
+Changing the endpoint removes roughly one final native frame, **not** the long burst tail. The vanished historical ~113–146ms position figures cannot be reprocessed under either definition; their comparison remains unresolved, not silently treated as like-for-like.
+
+### Native producer phases: frozen README versus simple document
+
+Separate observation-only Release binary generated by `tests/bench/native_profile.py`; production `src/preview.cpp` and `build/mdview-preview` untouched by instrumentation. Five fresh processes per fixture, first discarded; **33 frames/process**, 330 recorded frames overall. CPU2 affinity verified for every process. Viewport948×1012; 0–100% of document scroll range in 10% steps, repeated three times in the same order. Frozen README offsets: 0/3410/6820/10229/13639/17049/20459/23869/27279/30688/34098. The simple `examples/demo.md` is shorter than the viewport (749.1px), so all offsets are0; it is not a long-document scaling series. Profile load averages before/after were6.14/6.46 (1min), with powersave unchanged.
+
+| Phase | README p50 ms | CV p50 | README p95 ms | CV p95 | Simple p50 ms | CV p50 | Simple p95 ms | CV p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Draw: surface setup + document | 27.41 | 6.25% | 34.30 | 7.02% | 6.76 | 10.12% | 9.52 | 8.04% |
+| Cairo → straight RGBA | 4.31 | 14.65% | 6.26 | 7.51% | 6.00 | 6.34% | 8.34 | 10.10% |
+| File open/write/close | 1.94 | 7.95% | 3.73 | 15.18% | 1.93 | 17.39% | 3.52 | 7.94% |
+| Native total | 34.07 | 6.45% | 42.14 | 8.11% | 15.99 | 6.05% | 20.87 | 12.70% |
+
+Within draw, `doc->draw` alone has p50 **26.46ms** versus **4.67ms**; setup p50 **0.56ms** versus **2.01ms**. Conversion includes surface flush, vector allocation and straight-alpha conversion. Write includes implicit close but **no fsync**: page-cache completion, not durable media latency. Total ends after surface destruction/status checks, before metrics emission; it excludes Neovim/Kitty/terminal transfer. Phase quantiles are independently computed and must not be added. Frame elapsed includes instrumentation reporting overhead, so phase JSON `total_ms` is authoritative.
+
+Stock versus instrumented raw frames were byte-identical at README y0/y34098 and simple y0, three3837504-byte frames; hashes in `equivalence-smoke.json`.
+
+### Conclusion: measured versus hypotheses
+
+**Measured:** the oldest runnable committed controller and bench-harness both produce roughly33ms active p50 under the same conditions. B is not systematically slower; differences in p50 are small and p95 is mostly lower. Source comparison also finds no changed active smoothing/render path. **No evidence of a regression between these committed revisions.** Four retained runs do not prove statistical equivalence or cover the lost pre-commit experimental copies.
+
+**Measured:** the frozen README producer takes about34ms total versus16ms on the simple document; document drawing dominates the difference, while write medians are about2ms for both. A one-frame-in-flight controller cannot publish a sustained cadence faster than its producer. The larger workload is therefore a measured contributor to today's cadence; its content/length/geometry components were not independently isolated.
+
+**Hypotheses / remaining historical limits:** changed fixture, historical benchmark implementation/build/dependencies, scheduling/frequency and tmpfs-versus-ext4 may explain the old/new gap. The present measurements do not rank all these causes. The historical fixture, source instrumentation and traces are missing, so this diagnosis closes the committed-revision A/B question, **not** byte-identical reproduction of the historical18–20ms claim. Elevated desktop load and unreserved SMT siblings remain environmental confounders. No retuning or default change is justified by this comparison.
+
+### Durable evidence and reproduction
+
+- `scripts/bench-diagnose --output tests/bench/results/<new-name>`: full five-run A/B, isolated checkouts and actual real Kitty. `--summarize-only --output tests/bench/results/diagnosis-20260930` recomputes statistics from raw traces without new measurements.
+- [A/B comparison](tests/bench/results/diagnosis-20260930/comparison.json), `conditions.json`, per-launch condition snapshots, `A-{1..5}` / `B-{1..5}` raw scenario traces, summaries, versions, SHA-256 and effective-affinity records. These local results persist in the repository; generated checkouts/builds/screenshots are not committed.
+- [Native phases](tests/bench/results/native-profile/summary.json), `run-metadata.json`, `build-metadata.json`, `*-run{0..4}-phases.jsonl`, fixture/CSS snapshots and byte-equivalence evidence. Generated source/build are isolated under that result directory.
+- Executed regression: `nvim --headless -u NONE -l tests/plugin.lua` and `./tests/smoke.sh` passed. Native byte-equivalence smoke passed. These do not replace the user's daily fluid perception or measure physical touchpad/presentation latency.
+
+Native-profile writes reuse/truncate one repository runtime file, without Kitty deleting it; A/B uses the production sequence-specific filenames consumed by Kitty. The native profile isolates producer phases rather than reproducing that complete file lifecycle. Treat its write timings as the measured profiling workload, not an exact decomposition of every A/B frame.

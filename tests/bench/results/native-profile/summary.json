@@ -1,0 +1,270 @@
+{
+  "tests/bench/fixture.md": {
+    "setup_ms": {
+      "p50": {
+        "median_ms": 0.558325,
+        "cv_sample_stdev_over_mean": 0.11785222121846567,
+        "retained_run_values_ms": [
+          0.504704,
+          0.526472,
+          0.590178,
+          0.653155
+        ]
+      },
+      "p95": {
+        "median_ms": 2.05326,
+        "cv_sample_stdev_over_mean": 0.17076966943135272,
+        "retained_run_values_ms": [
+          1.64127,
+          1.97265,
+          2.13387,
+          2.48706
+        ]
+      }
+    },
+    "doc_draw_ms": {
+      "p50": {
+        "median_ms": 26.46415,
+        "cv_sample_stdev_over_mean": 0.0597874862533392,
+        "retained_run_values_ms": [
+          24.8386,
+          25.6217,
+          28.3345,
+          27.3066
+        ]
+      },
+      "p95": {
+        "median_ms": 33.6853,
+        "cv_sample_stdev_over_mean": 0.07015520742932858,
+        "retained_run_values_ms": [
+          30.6749,
+          32.2286,
+          35.5537,
+          35.142
+        ]
+      }
+    },
+    "draw_ms": {
+      "p50": {
+        "median_ms": 27.40865,
+        "cv_sample_stdev_over_mean": 0.06249334525457948,
+        "retained_run_values_ms": [
+          25.2572,
+          26.4582,
+          28.9456,
+          28.3591
+        ]
+      },
+      "p95": {
+        "median_ms": 34.298199999999994,
+        "cv_sample_stdev_over_mean": 0.07019415260925756,
+        "retained_run_values_ms": [
+          31.2524,
+          32.7551,
+          36.1439,
+          35.8413
+        ]
+      }
+    },
+    "convert_ms": {
+      "p50": {
+        "median_ms": 4.311085,
+        "cv_sample_stdev_over_mean": 0.14651322914297668,
+        "retained_run_values_ms": [
+          3.81787,
+          3.88161,
+          4.74056,
+          5.11963
+        ]
+      },
+      "p95": {
+        "median_ms": 6.259525,
+        "cv_sample_stdev_over_mean": 0.07514652440339935,
+        "retained_run_values_ms": [
+          6.16693,
+          5.59881,
+          6.35212,
+          6.71741
+        ]
+      }
+    },
+    "write_close_ms": {
+      "p50": {
+        "median_ms": 1.94228,
+        "cv_sample_stdev_over_mean": 0.07947609090458146,
+        "retained_run_values_ms": [
+          1.73582,
+          1.94443,
+          1.94013,
+          2.11114
+        ]
+      },
+      "p95": {
+        "median_ms": 3.7258750000000003,
+        "cv_sample_stdev_over_mean": 0.1517634592550677,
+        "retained_run_values_ms": [
+          4.12528,
+          3.32647,
+          4.33434,
+          3.19531
+        ]
+      }
+    },
+    "total_ms": {
+      "p50": {
+        "median_ms": 34.0654,
+        "cv_sample_stdev_over_mean": 0.06446745872370592,
+        "retained_run_values_ms": [
+          31.5284,
+          32.4477,
+          35.7393,
+          35.6831
+        ]
+      },
+      "p95": {
+        "median_ms": 42.14185,
+        "cv_sample_stdev_over_mean": 0.08111590208044574,
+        "retained_run_values_ms": [
+          37.755,
+          40.4432,
+          45.29,
+          43.8405
+        ]
+      }
+    }
+  },
+  "examples/demo.md": {
+    "setup_ms": {
+      "p50": {
+        "median_ms": 2.01216,
+        "cv_sample_stdev_over_mean": 0.08836857100225796,
+        "retained_run_values_ms": [
+          2.21264,
+          1.94505,
+          1.7991,
+          2.07927
+        ]
+      },
+      "p95": {
+        "median_ms": 2.8746,
+        "cv_sample_stdev_over_mean": 0.09424161315966338,
+        "retained_run_values_ms": [
+          3.33086,
+          2.84387,
+          2.68091,
+          2.90533
+        ]
+      }
+    },
+    "doc_draw_ms": {
+      "p50": {
+        "median_ms": 4.67167,
+        "cv_sample_stdev_over_mean": 0.15493737581725103,
+        "retained_run_values_ms": [
+          4.64012,
+          4.70322,
+          3.90212,
+          5.68893
+        ]
+      },
+      "p95": {
+        "median_ms": 7.3739550000000005,
+        "cv_sample_stdev_over_mean": 0.09667135950380173,
+        "retained_run_values_ms": [
+          7.88165,
+          7.80616,
+          6.42725,
+          6.94175
+        ]
+      }
+    },
+    "draw_ms": {
+      "p50": {
+        "median_ms": 6.75927,
+        "cv_sample_stdev_over_mean": 0.10124532879593752,
+        "retained_run_values_ms": [
+          6.76082,
+          6.75772,
+          5.90912,
+          7.58372
+        ]
+      },
+      "p95": {
+        "median_ms": 9.52447,
+        "cv_sample_stdev_over_mean": 0.08044311046599249,
+        "retained_run_values_ms": [
+          10.5351,
+          9.70394,
+          8.68836,
+          9.345
+        ]
+      }
+    },
+    "convert_ms": {
+      "p50": {
+        "median_ms": 6.003865,
+        "cv_sample_stdev_over_mean": 0.06342509210235026,
+        "retained_run_values_ms": [
+          6.54182,
+          6.12164,
+          5.64072,
+          5.88609
+        ]
+      },
+      "p95": {
+        "median_ms": 8.341660000000001,
+        "cv_sample_stdev_over_mean": 0.10101480978756879,
+        "retained_run_values_ms": [
+          8.92559,
+          8.82435,
+          7.18743,
+          7.85897
+        ]
+      }
+    },
+    "write_close_ms": {
+      "p50": {
+        "median_ms": 1.925215,
+        "cv_sample_stdev_over_mean": 0.1738557238484485,
+        "retained_run_values_ms": [
+          2.52354,
+          2.00812,
+          1.72567,
+          1.84231
+        ]
+      },
+      "p95": {
+        "median_ms": 3.524965,
+        "cv_sample_stdev_over_mean": 0.07939312017512189,
+        "retained_run_values_ms": [
+          4.04875,
+          3.58145,
+          3.46848,
+          3.4173
+        ]
+      }
+    },
+    "total_ms": {
+      "p50": {
+        "median_ms": 15.98835,
+        "cv_sample_stdev_over_mean": 0.06047093428716523,
+        "retained_run_values_ms": [
+          16.9918,
+          15.4665,
+          14.8721,
+          16.5102
+        ]
+      },
+      "p95": {
+        "median_ms": 20.86625,
+        "cv_sample_stdev_over_mean": 0.12697666945536848,
+        "retained_run_values_ms": [
+          22.8143,
+          22.0105,
+          17.0468,
+          19.722
+        ]
+      }
+    }
+  }
+}

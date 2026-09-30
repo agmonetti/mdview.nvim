@@ -1,0 +1,13 @@
+{
+  "source_sha256": "3a03f18a67522b07ae7dde16a2706bddc6aefe4b372cbc1721eba9f58994fd46",
+  "instrumented_sha256": "c9ae9fcfadd6154fec284d4b94f266b376b76ad61d81931b3f6727320841773c",
+  "build_type": "Release",
+  "production_binary_untouched": "/home/agus-hy/Documentos/mdview-nvim-lite/build/mdview-preview",
+  "phase_definition": {
+    "draw_ms": "surface setup, background paint, clip calculation and doc->draw",
+    "convert_ms": "surface flush, data/stride access, RGBA vector allocation and straight-alpha conversion",
+    "write_close_ms": "ofstream open/write and implicit close (page-cache completion, no fsync); excludes RGBA destruction",
+    "total_ms": "production DRAW clock to after surface destroy/status check; before JSON/FRAME reporting",
+    "residual": "cairo context destruction, output path decode, RGBA destruction, surface destruction/status check and timestamp overhead"
+  }
+}

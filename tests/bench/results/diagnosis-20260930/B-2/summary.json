@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "factor": 0.6,
+  "clamp_pixels": 84,
+  "samples_per_scenario": 1,
+  "definitions": {
+    "intervals": "Consecutive raw Kitty helper transmission starts during the input phase; initial positioning excluded.",
+    "active": "Exclude intervals whose previous transmitted y equals the latest target at publication (exact integer equality).",
+    "quantiles": "Nearest rank: sorted[ceil(p*n)-1].",
+    "std": "Sample standard deviation, n-1; null for n<2.",
+    "settle": "First transmission at the final target after the final input minus final-input time.",
+    "ack": "Kitty APC load response with q=0 requested by the harness; not compositor/screen presentation.",
+    "inputs": "Installed mapping callbacks, not OS touchpad events. 20 down-wheel events at each rate; burst 400 alternating arrows/wheel in four 100-event down/up/down/up blocks, nominal 20 ms.",
+    "request_settle": "First DRAW at final integer raster y minus last-input time; not exact subpixel snap."
+  },
+  "scenarios": [
+    {
+      "scenario": "5hz",
+      "viewport": {
+        "columns": 79,
+        "rows": 44,
+        "height": 1012,
+        "cell": {
+          "screen_x": 948,
+          "screen_y": 1035,
+          "screen_cols": 79,
+          "screen_rows": 45,
+          "cell_height": 23,
+          "cell_width": 12
+        },
+        "width": 948
+      },
+      "inputs": 20,
+      "noop_inputs": 0,
+      "boundary_inputs": 0,
+      "draws": 119,
+      "received_frames": 119,
+      "transmissions": 119,
+      "ack_ok": 119,
+      "ack_missing": 0,
+      "ack_errors": [],
+      "global_intervals": {
+        "count": 118,
+        "p50_ms": 33.58190899999954,
+        "p95_ms": 41.69181999999955,
+        "max_ms": 50.643089000000145,
+        "sample_std_ms": 3.3353152826330184,
+        "gaps_over_32_ms": 83
+      },
+      "active_intervals": {
+        "count": 105,
+        "p50_ms": 33.34214499999962,
+        "p95_ms": 37.9856249999998,
+        "max_ms": 50.643089000000145,
+        "sample_std_ms": 3.08807623400894,
+        "gaps_over_32_ms": 70
+      },
+      "idle_intervals_excluded": 13,
+      "final_target_y": 19336,
+      "final_target_settle_ms": 231.80931000000055,
+      "final_request_settle_ms": 198.78834900000038,
+      "final_target_ack_ms": 238.7953319999997,
+      "input_periods": {
+        "count": 19,
+        "p50_ms": 200.17281299999922,
+        "p95_ms": 200.875771,
+        "max_ms": 200.875771,
+        "sample_std_ms": 0.4537182234983957,
+        "gaps_over_32_ms": 19
+      },
+      "revision_count": 1
+    },
+    {
+      "scenario": "10hz",
+      "viewport": {
+        "columns": 79,
+        "rows": 44,
+        "height": 1012,
+        "cell": {
+          "screen_x": 948,
+          "screen_y": 1035,
+          "screen_cols": 79,
+          "screen_rows": 45,
+          "cell_height": 23,
+          "cell_width": 12
+        },
+        "width": 948
+      },
+      "inputs": 20,
+      "noop_inputs": 0,
+      "boundary_inputs": 0,
+      "draws": 61,
+      "received_frames": 61,
+      "transmissions": 61,
+      "ack_ok": 61,
+      "ack_missing": 0,
+      "ack_errors": [],
+      "global_intervals": {
+        "count": 60,
+        "p50_ms": 33.55381599999964,
+        "p95_ms": 46.316985999999815,
+        "max_ms": 46.72135400000025,
+        "sample_std_ms": 4.170533325413071,
+        "gaps_over_32_ms": 52
+      },
+      "active_intervals": {
+        "count": 60,
+        "p50_ms": 33.55381599999964,
+        "p95_ms": 46.316985999999815,
+        "max_ms": 46.72135400000025,
+        "sample_std_ms": 4.170533325413071,
+        "gaps_over_32_ms": 52
+      },
+      "idle_intervals_excluded": 0,
+      "final_target_y": 19336,
+      "final_target_settle_ms": 235.9872409999989,
+      "final_request_settle_ms": 205.30183299999953,
+      "final_target_ack_ms": 243.53612500000054,
+      "input_periods": {
+        "count": 19,
+        "p50_ms": 99.9592789999997,
+        "p95_ms": 102.13760199999979,
+        "max_ms": 102.13760199999979,
+        "sample_std_ms": 0.9518587120727979,
+        "gaps_over_32_ms": 19
+      },
+      "revision_count": 1
+    },
+    {
+      "scenario": "30hz",
+      "viewport": {
+        "columns": 79,
+        "rows": 44,
+        "height": 1012,
+        "cell": {
+          "screen_x": 948,
+          "screen_y": 1035,
+          "screen_cols": 79,
+          "screen_rows": 45,
+          "cell_height": 23,
+          "cell_width": 12
+        },
+        "width": 948
+      },
+      "inputs": 20,
+      "noop_inputs": 0,
+      "boundary_inputs": 0,
+      "draws": 29,
+      "received_frames": 29,
+      "transmissions": 29,
+      "ack_ok": 29,
+      "ack_missing": 0,
+      "ack_errors": [],
+      "global_intervals": {
+        "count": 28,
+        "p50_ms": 30.94379200000003,
+        "p95_ms": 35.363734999999,
+        "max_ms": 35.73001199999999,
+        "sample_std_ms": 1.957319718130688,
+        "gaps_over_32_ms": 8
+      },
+      "active_intervals": {
+        "count": 28,
+        "p50_ms": 30.94379200000003,
+        "p95_ms": 35.363734999999,
+        "max_ms": 35.73001199999999,
+        "sample_std_ms": 1.957319718130688,
+        "gaps_over_32_ms": 8
+      },
+      "idle_intervals_excluded": 0,
+      "final_target_y": 19336,
+      "final_target_settle_ms": 271.38297799999964,
+      "final_request_settle_ms": 241.11898500000098,
+      "final_target_ack_ms": 279.3458730000002,
+      "input_periods": {
+        "count": 19,
+        "p50_ms": 33.3968019999993,
+        "p95_ms": 34.46929700000146,
+        "max_ms": 34.46929700000146,
+        "sample_std_ms": 0.5369982065174389,
+        "gaps_over_32_ms": 19
+      },
+      "revision_count": 1
+    },
+    {
+      "scenario": "burst",
+      "viewport": {
+        "columns": 79,
+        "rows": 44,
+        "height": 1012,
+        "cell": {
+          "screen_x": 948,
+          "screen_y": 1035,
+          "screen_cols": 79,
+          "screen_rows": 45,
+          "cell_height": 23,
+          "cell_width": 12
+        },
+        "width": 948
+      },
+      "inputs": 400,
+      "noop_inputs": 0,
+      "boundary_inputs": 0,
+      "draws": 264,
+      "received_frames": 264,
+      "transmissions": 264,
+      "ack_ok": 264,
+      "ack_missing": 0,
+      "ack_errors": [],
+      "global_intervals": {
+        "count": 263,
+        "p50_ms": 33.0828760000004,
+        "p95_ms": 38.81401399999959,
+        "max_ms": 46.30113999999958,
+        "sample_std_ms": 3.2539975323216788,
+        "gaps_over_32_ms": 175
+      },
+      "active_intervals": {
+        "count": 263,
+        "p50_ms": 33.0828760000004,
+        "p95_ms": 38.81401399999959,
+        "max_ms": 46.30113999999958,
+        "sample_std_ms": 3.2539975323216788,
+        "gaps_over_32_ms": 175
+      },
+      "idle_intervals_excluded": 0,
+      "final_target_y": 17496,
+      "final_target_settle_ms": 832.9809299999979,
+      "final_request_settle_ms": 803.5743140000013,
+      "final_target_ack_ms": 839.999530000001,
+      "input_periods": {
+        "count": 399,
+        "p50_ms": 19.973340000000462,
+        "p95_ms": 20.861854000000676,
+        "max_ms": 23.512681000000157,
+        "sample_std_ms": 0.6473370512398969,
+        "gaps_over_32_ms": 0
+      },
+      "revision_count": 1
+    }
+  ]
+}
