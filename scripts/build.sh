@@ -12,4 +12,4 @@ if [[ ! -f "$REPO/containers/cairo/render2png.cpp" ]]; then
 fi
 cmake -S "$ROOT" -B "$ROOT/build" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$ROOT/build" --parallel 2
-printf '\nBuilt: %s/build/mdview-render\n' "$ROOT"
+printf '\nBuilt: %s/build/mdview-render and %s/build/mdview-preview\n' "$ROOT" "$ROOT"
