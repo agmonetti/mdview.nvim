@@ -27,6 +27,40 @@ local function unhex(value)
 end
 local function notify(message) vim.notify("mdview: " .. message, vim.log.levels.ERROR) end
 
+-- guicursor is global: hide only while the document buffer has focus.
+-- With termguicolors, blend=100 makes the TUI emit civis instead of painting over the raster.
+local function viewer_cursor(s)
+  local saved, hidden, cmdline
+  local function restore()
+    if hidden and vim.o.guicursor == hidden then vim.o.guicursor = saved end
+    hidden = nil
+  end
+  local function refresh()
+    if session ~= s then return end
+    local mode = api.nvim_get_mode().mode
+    if not cmdline and api.nvim_get_current_win() == s.preview_win
+      and api.nvim_get_current_buf() == s.preview_buf and (mode == "n" or mode == "v" or mode == "V") then
+      -- A color keeps the attribute nonempty; blend=100 hides it regardless of that color.
+      api.nvim_set_hl(0, "MdviewHiddenCursor", {bg=0, blend=100})
+      if not hidden or vim.o.guicursor ~= hidden then
+        saved = vim.o.guicursor
+        hidden = saved .. (saved ~= "" and "," or "") .. "n-v:block-blinkon0-MdviewHiddenCursor"
+        vim.o.guicursor = hidden
+      end
+    else
+      restore()
+    end
+  end
+  api.nvim_create_autocmd({"WinEnter", "BufEnter", "ModeChanged", "ColorScheme"}, {group=s.group, callback=refresh})
+  api.nvim_create_autocmd("CmdlineEnter", {group=s.group, callback=function() cmdline=true; restore() end})
+  api.nvim_create_autocmd("CmdlineLeave", {group=s.group, callback=function()
+    cmdline=false
+    vim.schedule(refresh)
+  end})
+  s.restore_cursor = restore
+  refresh()
+end
+
 -- Kitty compares resolved cell RGB with its default background, not Neovim's bg=NONE.
 local function kitty_layer(s)
   if not s.raw or not wants_zbelow(options) then return end
@@ -134,6 +168,7 @@ function M.close()
   session = nil
   if s.smooth_timer then s.smooth_timer:stop(); s.smooth_timer:close(); s.smooth_timer=nil end
   if s.layer then s.layer.close() end
+  if s.restore_cursor then s.restore_cursor() end
   api.nvim_del_augroup_by_id(s.group)
   if s.raw and s.raw_image_id then
     pcall(function()
@@ -252,6 +287,7 @@ function M.open(mode)
   end
   session = s
   kitty_layer(s)
+  viewer_cursor(s)
   local function valid()
     if session ~= s or not api.nvim_buf_is_valid(source_buf) or not api.nvim_buf_is_valid(preview_buf) then return false end
     if s.mode == "replace" then

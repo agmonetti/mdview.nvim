@@ -31,6 +31,11 @@ In reader mode:
 - **Edit:** `i` / `a` (enter insert mode at current reading line), `o` (open line below), `e` / `<CR>` (normal mode at current line).
 - **Close:** `q` or `<Esc>` returns to your editor buffer at the exact line where you were reading.
 
+The document window hides the normal/visual cursor using Neovim's transparent
+cursor highlight (`termguicolors` required in the TUI). Command-line input,
+focused floats, source windows and closing/editing restore the original cursor
+configuration. The plugin does not enable `termguicolors` or change global Cursor colors.
+
 To open in side-by-side split mode instead:
 
 ```vim
@@ -164,6 +169,7 @@ Historical F1/F3/PNG0/P2 flags belonged to isolated benchmark copies and are **n
 ./tests/smoke.sh                            # original CLI orchestration, mocked cmark
 nvim --headless -u NONE -l tests/plugin.lua  # native renderer + Lua controller; mocked image display
 nvim --headless -u NONE -l tests/theme.lua   # palette contrast, native geometry/pixels, live theme reload
+nvim --headless -u NONE -l tests/cursor.lua  # viewer focus and cursor restoration transitions
 ```
 
 The plugin regression check also exercises continuous reader wheel/arrow input, intermediate frame publication, final scroll convergence, and initial placement (mocked image display). It covers PNG pixel parity between plain and attributed HTML (including tables, nested lists, entities, code indentation, and a relative local image), actual Neovim soft-wrap scroll with UTF-8 and repeated text, unsaved edits, resize, error recovery, overlapping events, a document exceeding Cairo's full-image height limit, this repository's README, close/reopen, and worker/temp-file cleanup. It does **not** establish Kitty visual acceptance or support for arbitrary Markdown.
