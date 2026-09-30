@@ -122,6 +122,8 @@ function M.setup(opts)
   opts = opts or {}
   assert(opts.preset == nil or opts.preset == "fluid", "mdview: unknown preset " .. tostring(opts.preset))
   assert(opts.zbelow == nil or type(opts.zbelow) == "boolean", "mdview: zbelow must be boolean")
+  assert(opts.theme == nil or opts.theme == "dark" or opts.theme == "light" or opts.theme == "nvim",
+    "mdview: unknown theme " .. tostring(opts.theme))
   local preset = opts.preset == "fluid" and {raw=true, smooth=true, factor=0.6, clamp=84} or {}
   options = vim.tbl_extend("force", options, preset, opts)
 end
@@ -240,6 +242,14 @@ function M.open(mode)
     saved_win_opts=saved_win_opts, directory=directory, group=api.nvim_create_augroup("mdview.session", {clear=true}), revision=0, sequence=0,
     dirty=true, busy=false, loaded=false, pending="", fragments={}, error=nil, tick=-1, initial_line=initial_line,
     current_y=0, initialized_y=false, raw=raw_supported, raw_image_id=raw_image_id, smooth=smooth }
+  s.stylesheet = options.stylesheet
+  local theme = options.theme
+  local base_css
+  if theme then
+    base_css = table.concat(vim.fn.readfile(options.stylesheet), "\n")
+    s.stylesheet = directory .. "/markdown.css"
+    s.palette = require("mdview.theme").resolve(theme)
+  end
   session = s
   kitty_layer(s)
   local function valid()
@@ -303,12 +313,15 @@ function M.open(mode)
       s.tick, s.width, s.height = tick, w, h
       s.snapshot = directory .. "/snapshot.md"
       vim.fn.writefile(api.nvim_buf_get_lines(source_buf, 0, -1, false), s.snapshot)
+      if theme then
+        vim.fn.writefile(vim.split(base_css .. "\n" .. require("mdview.theme").css(s.palette), "\n", {plain=true}), s.stylesheet)
+      end
       local name = api.nvim_buf_get_name(source_buf)
       local base = name ~= "" and vim.fn.fnamemodify(name, ":h") or vim.fn.getcwd()
       s.dirty, s.busy, s.loaded, s.error = false, true, false, nil
       s.fragments = {}
       status("Rendering Markdown…")
-      send(table.concat({"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(options.stylesheet)}, " "))
+      send(table.concat({"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}, " "))
     elseif s.loaded then
       if not s.smooth and s.clamp_max and s.target_y then
         local base_y = s.last_drawn_y or s.current_y or 0
@@ -515,6 +528,18 @@ function M.open(mode)
     on_lines=function() if session ~= s then return true end; debounce(200, true) end,
     on_detach=function() vim.schedule(function() if session == s then M.close() end end) end,
   })
+  if theme == "nvim" then
+    local function refresh_theme()
+      if not valid() then return end
+      local palette = require("mdview.theme").resolve(theme)
+      if vim.deep_equal(palette, s.palette) then return end
+      s.palette = palette
+      -- Defer the CSS write until LOAD: never mutate a file a busy worker may be reading.
+      debounce(0, true)
+    end
+    api.nvim_create_autocmd("ColorScheme", {group=s.group, callback=refresh_theme})
+    api.nvim_create_autocmd("OptionSet", {group=s.group, pattern="background", callback=refresh_theme})
+  end
   api.nvim_create_autocmd("WinScrolled", {group=s.group, callback=function() debounce(100, false) end})
   api.nvim_create_autocmd({"WinResized", "VimResized"}, {group=s.group, callback=function()
     if not valid() then return end

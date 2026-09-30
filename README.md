@@ -52,6 +52,52 @@ require("mdview").setup({
 })
 ```
 
+### Document color themes (opt-in)
+
+```lua
+require("mdview").setup({ theme = "dark" }) -- "dark" | "light" | "nvim"
+-- Independent options can be combined:
+require("mdview").setup({ preset = "fluid", theme = "nvim" })
+```
+
+Omitting `theme` preserves the existing stylesheet unchanged, including custom
+`stylesheet` colors. Explicit `dark` reproduces the stock colors; `light` supplies
+an opaque reading palette. Explicit themes append color-only overrides after the
+configured stylesheet: fonts, sizes, spacing and border widths remain its responsibility.
+Fluid and layers remain independent; themes do not enable either.
+
+`nvim` translates effective, linked global highlights into a document palette:
+`Normal` background/text, `Title` headings, `Underlined` (then `Identifier`) links,
+`Comment` secondary/quote text, and `NormalFloat` code/table-header surfaces.
+Missing colors use the built-in palette selected by `background`; a missing or
+transparent `Normal.bg` never assumes black. Equal surfaces and decorative borders
+are derived by blending background/text. Relative sRGB luminance checks enforce
+at least 4.5:1 for adaptive text/quotes/code against their backgrounds, using
+readable fallback colors when necessary. Highlight bold/italic attributes are
+not copied; code syntax highlighting and document transparency are not included.
+
+Adaptive colors resolve on open, `ColorScheme`, and `OptionSet background`.
+Only a changed palette triggers a coalesced reload through the existing revision
+pipeline, preserving the reading target and rejecting outdated frames. There is
+no highlight lookup or CSS write per scroll frame. Direct highlight changes without
+those events require closing/reopening. Effective CSS lives in the session directory
+and is removed with the session. Theme changes incur a one-time full relayout.
+
+Inside local Kitty, with the usual image.nvim configuration:
+
+```bash
+bash scripts/manual-theme dark
+bash scripts/manual-theme light
+bash scripts/manual-theme nvim
+# Optional second argument: your own Markdown document.
+```
+
+The default temporary fixture includes headings, links, inline/block code, quotes,
+tables, a separator and a local image; source opens left and preview right.
+Compare readability and unchanged layout. In `nvim`, change your colorscheme while
+scrolling/editing, resize, then close/reopen. Real Kitty visual acceptance remains
+pending; headless checks cannot substitute for it.
+
 Raw HTML currently produces an explicit preview error; removing it recovers without restarting Neovim. Remote images are not fetched. Mermaid, math rendering, syntax highlighting, interactive links/text selection, and exact alignment with conceal/virtual source text are not supported or validated. Source columns for transformed Markdown are mapped through cmark literals; unsupported attribution fails explicitly rather than publishing a guessed mapping. Whole-document layout memory and edit/width-change cost still grow with document size; only raster allocation is bounded.
 
 ### Opt-in fluid preset
@@ -117,6 +163,7 @@ Historical F1/F3/PNG0/P2 flags belonged to isolated benchmark copies and are **n
 ```bash
 ./tests/smoke.sh                            # original CLI orchestration, mocked cmark
 nvim --headless -u NONE -l tests/plugin.lua  # native renderer + Lua controller; mocked image display
+nvim --headless -u NONE -l tests/theme.lua   # palette contrast, native geometry/pixels, live theme reload
 ```
 
 The plugin regression check also exercises continuous reader wheel/arrow input, intermediate frame publication, final scroll convergence, and initial placement (mocked image display). It covers PNG pixel parity between plain and attributed HTML (including tables, nested lists, entities, code indentation, and a relative local image), actual Neovim soft-wrap scroll with UTF-8 and repeated text, unsaved edits, resize, error recovery, overlapping events, a document exceeding Cairo's full-image height limit, this repository's README, close/reopen, and worker/temp-file cleanup. It does **not** establish Kitty visual acceptance or support for arbitrary Markdown.
