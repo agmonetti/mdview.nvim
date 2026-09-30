@@ -100,3 +100,24 @@ Temporary artifacts may disappear; the figures and limitations above remain reco
 :lua require("mdview").setup({preset="fluid"})
 :MdViewOpen
 ```
+
+## Persistent harness rerun — 2026-09-30
+
+Run: `./scripts/bench-scroll --factor 0.6 --output tests/bench/results/factor06-readme-20260930`. Retained [summary](tests/bench/results/factor06-readme-20260930/summary.json), per-scenario raw traces, fixture and version metadata live inside the repository. No runtime defaults were changed.
+
+One real local-Kitty sample per scenario, raw RGBA, factor0.6, clamp84px; actual viewport **948×1012**, cell12×23px. Fourfold snapshot of the then-current README; document height **35110.2px**, middle start y17496. Slow streams:20 wheel callbacks at5/10/30Hz. Burst:400 alternating arrow/wheel callbacks at nominal20ms, four100-event down/up/down/up blocks. The historical exact direction sequence and README fixture no longer exist; this is a recreated workload, not a byte-identical replay.
+
+| Active movement | Intervals | p50 ms | p95 ms | Max ms | Sample std ms | Historical active p95 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 5 Hz | 100 | 33.79 | 60.80 | 64.85 | 9.09 | 24.43 |
+| 10 Hz | 58 | 36.70 | 48.97 | 49.88 | 4.33 | 21.34 |
+| 30 Hz | 27 | 38.17 | 47.11 | 48.82 | 5.65 | 20.10 |
+| Burst | 223 | 39.75 | 51.83 | 60.91 | 5.51 | 22.78 |
+
+Definitions remain transmission-start intervals, nearest-rank quantiles and sample std; exclude a gap when its previous transmitted y equals the target at publication. At5Hz eight idle gaps were excluded: global p50/p95/max/std **33.98/60.80/64.85/8.85ms**. The other scenarios' global and active sets are identical.
+
+Final-target transmission settle / load ACK: **259.38/270.07ms**, **315.38/321.31ms**, **453.69/459.98ms**, **1232.51/1239.94ms**, respectively. DRAW / received FRAME / transmission / ACK OK counts were **109/109/109/109**, **59/59/59/59**, **28/28/28/28**, **224/224/224/224**. Zero no-op or boundary-saturated callbacks, one layout revision per stream, zero missing/error load ACKs.
+
+**Observed conclusion:** this rerun does **not** confirm the historical ~20ms active cadence. Native FRAME median timings themselves were32.14/35.02/35.85/38.13ms. The present fixture, viewport and burst directions differ; the data do not isolate a controller regression or another cause. No algorithm change, factor retuning or extra performance sweep was made to force agreement. ACK is not screen presentation; synthetic mappings are not physical touchpad input.
+
+**User-reported harness failure and correction:** the first exploratory240-chapter run displayed stale source text superposed with the raster. That sample is excluded from accepted comparison (`tests/bench/results/factor06-20260930/validity.json`). The harness had not explicitly redrawn the TUI after replacing the source buffer inside its synchronous callback-driven run. It now redraws buffer transitions before measurement. The corrected real-desktop screenshot was inspected: only the proportional raster appears in the preview, without stale monospaced source text. Screenshot and rejected artifacts remain local inside the result directories; generated screenshots are not committed. This is one corrected surface observation, not universal visual acceptance.

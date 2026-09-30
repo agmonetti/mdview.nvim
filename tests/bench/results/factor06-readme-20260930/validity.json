@@ -1,0 +1,7 @@
+{
+  "accepted": true,
+  "surface": "Actual desktop surface.png inspected after explicit transition redraw: reader raster visible without stale source-text overlay. Screenshot remains local, not committed.",
+  "fixture_sha256": "cf16a15207d0894ff7f86cd03206ee16722e09dee6be91b9077f2113042e288e",
+  "fixture_checksum_recorded": "After measurement; fixed tests/bench/fixture.md verified byte-identical to the measured fixture.",
+  "historical_limit": "Historical README snapshot and exact burst direction sequence unavailable. Dimensions948x1012 vs957x1008. Current native draws and settle times slower; no confirmed historical performance reproduction or attributed regression."
+}
