@@ -76,7 +76,7 @@ Keep transport fixed when comparing scroll variants. `FPLOG_RAW=1` enables the s
 - `FPLOG_P3=1`: standalone per-frame clamp comparison.
 - `FPLOG_STEP=1`: one-row wheel step; `FPLOG_STEP=2`: two-row reference.
 - `FPLOG_C=1`: combined two-row wheel step plus four-row per-frame clamp, behind one experiment switch.
-- `FPLOG_RAW_ZBELOW=1`: enables local raw transport and places the image below non-default cell backgrounds **only after detecting** the terminal background through OSC 11 and opacity through Kitty XTGETTCAP. A viewer-only highlight namespace matches that background. Missing/invalid responses automatically retain `z=-1` with a warning; no fixed-black fallback. ColorScheme, focus and terminal theme notifications trigger redetection; a one-second poll also checks background/opacity changes. Closing restores the prior window namespace. No float event hides the document.
+- `setup({zbelow=true})` or `FPLOG_RAW_ZBELOW=1`: enables local raw transport and places the image below non-default cell backgrounds **only after detecting** the terminal background through OSC 11 and opacity through Kitty XTGETTCAP. Explicit `zbelow=false` overrides the environment; omitted remains inactive unless the flag is set. Fluid does not enable it. A viewer-only highlight namespace matches that background. Missing/invalid responses automatically retain `z=-1` with a warning; no fixed-black fallback. ColorScheme, focus and terminal theme notifications trigger redetection; a one-second poll also checks background/opacity changes. Closing restores the prior window namespace. No float event hides the document.
 
 Example, from this checkout inside Kitty:
 
@@ -105,7 +105,7 @@ The 5 Hz/burst maxima include deliberate idle gaps after settling. Excluding tho
 | --- | --- |
 | F1 (`FPLOG_F1_CAIRO`) | Native p95 **80.90 ms** vs PNG baseline **43.74 ms**; direct Cairo PNG encoding remained costly. |
 | F3 (`FPLOG_F3_SHM`) | Native p95 gain over F2 **0.43 ms** at 957×1008 / **1.03 ms** at 1500×1000, below baseline IQR **2.58 ms**; retained simpler tmpfs-file transport. |
-| PNG0 (`FPLOG_C_PNG0`) | Native p95 **44.27 vs 43.74 ms**, no demonstrated benefit. Saved C/base PNGs are byte-identical: genuine compression0 was **not independently established**, so this is not a valid claim that uncompressed PNG is slower. |
+| PNG0 (`FPLOG_C_PNG0`) | Native p95 **44.27 vs 43.74 ms**, no demonstrated benefit. GdkPixbuf supports PNG compression levels 0–9, but the saved C/base PNGs are byte-identical: actual compression0 was **not independently established** in that experiment. This does not prove uncompressed PNG is slower or that the API lacks compression control. |
 | P2 (`FPLOG_P2`) | Still quantized; historical displacement p95 **220.5 px**, input→ACK p95 **49.47 vs base 46.65 ms**. Saturation confounds that old comparison; no conclusive ranking claimed. |
 | Factor 0.25 | Final-position settling **344/381/414 ms** at 5/10/30 Hz, **423 ms** burst: over ~150 ms. |
 | Factor 0.4 | **200/194/222 ms**, **207 ms** burst: longer tail than 0.6. User still liked its perception; not removed or visually rejected. |
@@ -120,6 +120,32 @@ nvim --headless -u NONE -l tests/plugin.lua  # native renderer + Lua controller;
 ```
 
 The plugin regression check also exercises continuous reader wheel/arrow input, intermediate frame publication, final scroll convergence, and initial placement (mocked image display). It covers PNG pixel parity between plain and attributed HTML (including tables, nested lists, entities, code indentation, and a relative local image), actual Neovim soft-wrap scroll with UTF-8 and repeated text, unsaved edits, resize, error recovery, overlapping events, a document exceeding Cairo's full-image height limit, this repository's README, close/reopen, and worker/temp-file cleanup. It does **not** establish Kitty visual acceptance or support for arbitrary Markdown.
+
+### Persistent real-Kitty benchmark
+
+From this checkout, run:
+
+```bash
+./scripts/bench-scroll
+```
+
+Prerequisites: the already-built `build/mdview-preview`, Neovim 0.10+ (with Kitty APC `TermResponse` support for load ACKs), Python 3.9+, Kitty, ImageMagick, an installed `image.nvim` checkout, and a reachable local graphical desktop (`DISPLAY` or `WAYLAND_DISPLAY`). The default image plugin path is `~/.local/share/nvim/lazy/image.nvim`; override it with `MDVIEW_IMAGE_PLUGIN=/path/to/image.nvim`. No dependencies are downloaded, nothing is built, and no normal Neovim configuration or plugin defaults are changed. SSH/tmux environments are rejected. A dedicated real Kitty window is launched even when the calling terminal is not Kitty; keep it visible and do not resize or interact with it during the run. Optional installed `grim` captures the actual desktop after initial positioning, outside the timed input phase.
+
+The isolated config uses the real native worker, installed image.nvim helpers, raw RGBA, factor **0.6**, and an **84 px** clamp. Its fixed `tests/bench/fixture.md` is the frozen fourfold README snapshot used for the retained measurement; each output gets an exact copy and starts in the middle. One sample per scenario: **20 wheel mapping callbacks at 5/10/30 Hz**, then **400 callbacks at nominal 20 ms**, alternating arrows/wheel in four 100-event down/up/down/up blocks (200 arrows + 200 wheel). These are synthetic touchpad-like callbacks, not OS input-queue or physical touchpad events. Every callback must change the target without reaching a boundary; a resize, failed ACK, missing dependency, or failure to settle aborts clearly rather than publishing a valid-looking summary.
+
+All outputs stay under `tests/bench/results/<timestamp>/`: `fixture.md`, raw `5hz.json`, `10hz.json`, `30hz.json`, `burst.json`, `summary.json`, runtime/version/fixture-SHA256 metadata, and Kitty diagnostics. `--output tests/bench/results/my-run` chooses a new directory; `--factor 0.4` is an explicit alternative, not a changed default. Raw traces include input schedules/actual timestamps/targets, native DRAW requests and FRAME replies, transmission starts/publication timestamps, and actual Kitty load ACKs. Temporary native/image files also stay inside the result directory. New results/runtime files are ignored by default; the corrected sample's JSON evidence is retained in version control.
+
+Metric definitions match the historical interval analysis:
+
+- **Global intervals:** consecutive Kitty transmission-start timestamps in the input phase, excluding initial positioning.
+- **Active intervals:** exclude a gap when its previous transmitted integer y already equals the latest requested target at that publication. This distinguishes intentional idle periods from ongoing movement; it is not a guessed gap-length cutoff.
+- **p50/p95:** nearest rank, sorted index `ceil(p*n)-1`. **Max:** largest interval. **Std:** sample standard deviation (`n-1`), undefined/null for fewer than two intervals.
+- **Final-target settle:** first transmission at the final target after the last input, minus that input's timestamp. **Final-target ACK:** that transmission's actual load ACK minus the last input.
+- **DRAW / FRAME / transmission / ACK counts** and no-op/boundary counts distinguish producer rejection, publication, transport response, and saturation. Load ACKs are requested only by benchmark wrappers; they do **not** prove compositor/presentation timing or zero displayed-frame drops.
+
+Historical comparison is not byte-identical: the old `/tmp` traces, exact 400-event direction sequence, and historical README snapshot disappeared; actual window/cell dimensions are recorded rather than assumed. Compare fixture/viewport/input cadence alongside the numbers. The retained `factor06-readme-20260930` sample is the corrected fourfold-README run, at **948×1012**, with zero no-op/boundary inputs and successful ACKs for all transmissions. Its active p95 is **60.80/48.97/47.11/51.83 ms** and settling **259/315/454/1233 ms** at 5/10/30 Hz/burst: these do **not** reproduce the faster historical cadence. Native median draw times themselves are **32.14/35.02/35.85/38.13 ms**; fixture/environment differences prevent attributing a regression to smoothing. Full new/historical tables: [REPORT.md](REPORT.md).
+
+The earlier heavy `factor06-20260930` exploratory sample remains locally but is explicitly rejected in its `validity.json`: the user observed stale source text overlaid on the raster, and its 240-chapter fixture was not comparable. The harness now explicitly redraws buffer transitions; the corrected real desktop screenshot was inspected without that overlay and is retained locally, not committed. This narrow surface check is not the user's manual smoothness/layer acceptance.
 
 ## Earlier prototype evidence
 

@@ -4,3 +4,10 @@ third_party/litehtml/
 *.png
 AGENTS.md
 .clangd
+tests/bench/results/*
+!tests/bench/results/factor06-readme-20260930/
+tests/bench/results/**/runtime/
+tests/bench/results/**/*.log
+tests/bench/results/**/fixture.md
+tests/bench/*.sock*
+__pycache__/

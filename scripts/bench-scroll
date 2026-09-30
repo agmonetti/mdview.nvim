@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Run one isolated real-Kitty sample of each reader scrolling workload."""
+import argparse
+import datetime
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import shutil
+import statistics
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def interval_stats(values):
+    ordered = sorted(values)
+    def rank(p):
+        return ordered[max(0, math.ceil(p * len(ordered)) - 1)] if ordered else None
+    return {"count": len(ordered), "p50_ms": rank(.5), "p95_ms": rank(.95),
+            "max_ms": max(ordered) if ordered else None,
+            "sample_std_ms": statistics.stdev(ordered) if len(ordered) > 1 else None,
+            "gaps_over_32_ms": sum(x > 32 for x in ordered)}
+
+
+def summarize(trace):
+    transmissions = [t for t in trace["transmissions"] if t["phase"] == "input"]
+    intervals, active = [], []
+    for previous, current in zip(transmissions, transmissions[1:]):
+        gap = current["start_ms"] - previous["start_ms"]
+        intervals.append(gap)
+        if previous["y"] != previous["target_y_at_publication"]:
+            active.append(gap)
+    last_input = trace["inputs"][-1]["time_ms"]
+    final_target = trace["inputs"][-1]["target_y"]
+    final = next((t for t in transmissions if t["start_ms"] >= last_input and t["y"] == final_target), None)
+    draws = [d for d in trace["draws"] if d["phase"] == "input"]
+    frames = [f for f in trace["frames"] if f["phase"] == "input"]
+    errors = [a for a in trace["acks"] if a["message"] != "OK"]
+    return {"scenario": trace["scenario"], "viewport": trace["viewport"],
+            "inputs": len(trace["inputs"]), "noop_inputs": sum(i["old_target_y"] == i["target_y"] for i in trace["inputs"]),
+            "boundary_inputs": sum(i["target_y"] in (0, trace["max_y"]) for i in trace["inputs"]),
+            "draws": len(draws), "received_frames": len(frames), "transmissions": len(transmissions),
+            "ack_ok": sum(t.get("ack_message") == "OK" for t in transmissions),
+            "ack_missing": sum("ack_message" not in t for t in transmissions), "ack_errors": errors,
+            "global_intervals": interval_stats(intervals), "active_intervals": interval_stats(active),
+            "idle_intervals_excluded": len(intervals) - len(active), "final_target_y": final_target,
+            "final_target_settle_ms": final["start_ms"] - last_input if final else None,
+            "final_target_ack_ms": final["ack_ms"] - last_input if final and "ack_ms" in final else None,
+            "input_periods": interval_stats([b["time_ms"] - a["time_ms"] for a, b in zip(trace["inputs"], trace["inputs"][1:])]),
+            "revision_count": len({d["revision"] for d in draws})}
+
+
+def fixture(path):
+    shutil.copyfile(ROOT / "tests/bench/fixture.md", path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--factor", type=float, default=.6, help="explicit opt-in smoothing factor (default: 0.6)")
+    parser.add_argument("--output", type=Path, help="new output directory inside this repository")
+    args = parser.parse_args()
+    if not 0 < args.factor <= 1:
+        parser.error("--factor must be in (0, 1]")
+    missing = [name for name in ("nvim", "kitty", "magick") if not shutil.which(name)]
+    if missing:
+        parser.error("missing installed prerequisites: " + ", ".join(missing))
+    if not os.access(ROOT / "build/mdview-preview", os.X_OK):
+        parser.error("native renderer missing: run ./scripts/build.sh explicitly first")
+    image = Path(os.environ.get("MDVIEW_IMAGE_PLUGIN", Path.home() / ".local/share/nvim/lazy/image.nvim")).expanduser().resolve()
+    if not (image / "lua/image/init.lua").is_file():
+        parser.error("installed image.nvim missing; set MDVIEW_IMAGE_PLUGIN to its checkout (no downloads performed)")
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        parser.error("a reachable local graphical desktop (DISPLAY or WAYLAND_DISPLAY) is required to launch real Kitty")
+    remote = [name for name in ("TMUX", "SSH_CLIENT", "SSH_TTY", "SSH_CONNECTION") if name in os.environ]
+    if remote:
+        parser.error("local non-multiplexed Kitty required; inherited environment markers: " + ", ".join(remote))
+    output = (args.output or ROOT / "tests/bench/results" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
+    if not output.is_relative_to(ROOT):
+        parser.error("--output must stay inside this repository")
+    if output.exists():
+        parser.error("output directory already exists; choose a new directory to preserve prior results")
+    output.mkdir(parents=True)
+    fixture(output / "fixture.md")
+    env = dict(os.environ)
+    # Do not inherit user experiments, terminal IDs, or user Neovim config.
+    for name in list(env):
+        if name.startswith("FPLOG_") or name in ("KITTY_WINDOW_ID", "KITTY_LISTEN_ON"):
+            env.pop(name)
+    env.update(MDVIEW_BENCH_ROOT=str(ROOT), MDVIEW_BENCH_OUTPUT=str(output),
+               MDVIEW_IMAGE_PLUGIN=str(image), MDVIEW_BENCH_FACTOR=str(args.factor),
+               TMPDIR=str(output / "runtime"))
+    (output / "runtime").mkdir()
+    versions = {name: subprocess.run([name, "--version"], capture_output=True, text=True).stdout.splitlines()[0]
+                for name in ("nvim", "kitty", "magick", "python3")}
+    (output / "launcher.json").write_text(json.dumps({"versions": versions, "factor": args.factor,
+        "image_plugin": str(image), "fixture": "frozen fourfold README snapshot, tests/bench/fixture.md",
+        "fixture_sha256": hashlib.sha256((output / "fixture.md").read_bytes()).hexdigest(),
+        "kitty_requested_window_pixels": [1000, 1060]}, indent=2) + "\n")
+    command = ["kitty", "--config", "NONE", "--title", "mdview synthetic benchmark",
+               "--override", "initial_window_width=1000", "--override", "initial_window_height=1060",
+               "--override", "remember_window_size=no", "--override", "font_size=12",
+               "--override", "background_opacity=1", "--directory", str(ROOT),
+               "nvim", "--clean", "-u", str(ROOT / "tests/bench/init.lua"), "-i", "NONE", "-n",
+               str(output / "fixture.md")]
+    try:
+        with (output / "kitty.log").open("w") as log:
+            result = subprocess.run(command, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=120)
+    except subprocess.TimeoutExpired:
+        sys.exit(f"benchmark timed out; inspect {output}/kitty.log and error.json (do not use partial results)")
+    if result.returncode or not (output / "complete.json").is_file():
+        detail = (output / "error.json").read_text() if (output / "error.json").exists() else (output / "kitty.log").read_text()
+        sys.exit(f"real Kitty benchmark failed (exit {result.returncode}): {detail}\nArtifacts: {output}")
+    summaries = [summarize(json.loads((output / f"{name}.json").read_text())) for name in ("5hz", "10hz", "30hz", "burst")]
+    summary = {"schema_version": 1, "factor": args.factor, "clamp_pixels": 84, "samples_per_scenario": 1,
+               "definitions": {"intervals": "Consecutive raw Kitty helper transmission starts during the input phase; initial positioning excluded.",
+                 "active": "Exclude intervals whose previous transmitted y equals the latest target at publication (exact integer equality).",
+                 "quantiles": "Nearest rank: sorted[ceil(p*n)-1].", "std": "Sample standard deviation, n-1; null for n<2.",
+                 "settle": "First transmission at the final target after the final input minus final-input time.",
+                 "ack": "Kitty APC load response with q=0 requested by the harness; not compositor/screen presentation.",
+                 "inputs": "Installed mapping callbacks, not OS touchpad events. 20 down-wheel events at each rate; burst 400 alternating arrows/wheel in four 100-event down/up/down/up blocks, nominal 20 ms."},
+               "scenarios": summaries}
+    (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    print("Scenario | global p50/p95/max/std ms | active p50/p95/max/std ms | settle/ACK ms | DRAW/TX/ACK")
+    for row in summaries:
+        def stats(key):
+            return "/".join(f"{row[key][field]:.2f}" if row[key][field] is not None else "n/a"
+                            for field in ("p50_ms", "p95_ms", "max_ms", "sample_std_ms"))
+        print(f"{row['scenario']} | {stats('global_intervals')} | {stats('active_intervals')} | "
+              f"{row['final_target_settle_ms']:.2f}/{row['final_target_ack_ms']:.2f} | "
+              f"{row['draws']}/{row['transmissions']}/{row['ack_ok']}")
+    print(f"Raw traces, fixture and summary: {output}")
+
+
+if __name__ == "__main__":
+    main()
