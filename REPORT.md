@@ -19,7 +19,7 @@ require("mdview").setup({ raw = true, smooth = true, factor = 0.6, clamp = 84 })
 - No Kitty identification (`TERM` / `KITTY_WINDOW_ID`): no raw, PNG path. This is environment-based support detection, not a full protocol negotiation. It does not make the Kitty backend work in arbitrary non-graphics terminals.
 - Missing image.nvim, renderer, stylesheet, or usable cell-pixel dimensions yields an explicit diagnostic; the plugin does not silently install dependencies or pretend to display successfully. Remote file-path raw transmission is not attempted.
 - No raw-specific runtime ACK negotiation is added to normal operation. Measurement wrappers requested ACKs; normal production uses quiet transmissions. Spoofed terminal identification or terminal/container filesystem isolation is not certified.
-- Layers (`FPLOG_RAW_ZBELOW`) remain a separate experiment awaiting the user's manual report. This task did not modify its implementation, and fluid does not enable it. The shared raw eligibility check now rejects tmux/SSH_CONNECTION too; this is the conservative transport fallback, not a new layer behavior or acceptance claim.
+- Layers (`setup({zbelow=true})` or `FPLOG_RAW_ZBELOW=1`) remain a separate opt-in awaiting the user's manual report; fluid does not enable them. Explicit `zbelow=false` overrides the environment switch; without either opt-in the effective default is false. Enabling zbelow requests raw subject to the existing local-Kitty eligibility checks; `raw=false` still forbids raw. Missing/invalid background or opacity detection preserves `z=-1`, never guesses a color. The layer detection/placement algorithm is unchanged.
 
 ## Frame intervals: factor0.6, clamp84px
 
@@ -64,7 +64,7 @@ Factor0.6 settling remains132/127/146ms to final position at5/10/30Hz and113ms i
 | `FPLOG_STEP=1` / `=2` | D one-row wheel reference / P1 two-row reference |
 | `FPLOG_P3=1` | Standalone per-frame clamp comparison |
 | `FPLOG_C=1` | Combined two-row wheel step + four-row clamp; not the PNG0 encoding experiment |
-| `FPLOG_RAW_ZBELOW=1` | Separate lower layer, pending user manual acceptance; not enabled by fluid |
+| `setup({zbelow=true})` / `FPLOG_RAW_ZBELOW=1` | Separate lower layer with detected terminal background; default inactive, not enabled by fluid; explicit false overrides the flag |
 
 One experiment enable switch per comparison. Parameter variables tune that treatment; keep transport constant when comparing scroll variants. F1/F3/C_PNG0/P2 were flags in isolated historical profiling copies, **not supported toggles in the current installed plugin**.
 

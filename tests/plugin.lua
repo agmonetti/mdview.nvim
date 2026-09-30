@@ -333,7 +333,8 @@ local function check()
   local global_normal=api.nvim_get_hl(0,{name="Normal",link=true})
   local original_ns=api.nvim_get_hl_ns({winid=orig_win})
   local original_winhl=vim.wo[orig_win].winhighlight
-  terminal_reply=true; vim.env.FPLOG_RAW=nil; vim.env.FPLOG_RAW_ZBELOW="1"
+  terminal_reply=true; vim.env.FPLOG_RAW=nil; vim.env.FPLOG_RAW_ZBELOW=nil
+  mdview.setup({zbelow=true})
   mdview.open("replace")
   wait(function() local cur=mdview.status(); return cur and cur.frame and cur.layer.enabled and not cur.busy end,"detected lower layer")
   local below=mdview.status()
@@ -362,7 +363,14 @@ local function check()
   assert(api.nvim_get_hl_ns({winid=orig_win})==original_ns,"namespace not restored on close")
   assert(vim.wo[orig_win].winhighlight==original_winhl,"winhighlight not restored")
   assert(vim.deep_equal(global_normal,api.nvim_get_hl(0,{name="Normal",link=true})),"global highlight leaked")
+  vim.env.FPLOG_RAW_ZBELOW="1"
+  mdview.setup({zbelow=false})
+  mdview.open("replace")
+  wait(function() local cur=mdview.status(); return cur and cur.frame and not cur.busy end,"explicit layer disable")
+  assert(not mdview.status().raw and mdview.status().layer==nil,"zbelow=false did not override environment opt-in")
+  mdview.close()
   vim.env.FPLOG_RAW_ZBELOW=nil
+  assert(not pcall(mdview.setup,{zbelow="true"}),"nonboolean zbelow accepted")
   vim.env.FPLOG_RAW=nil
   assert(not pcall(mdview.setup,{preset="unknown"}),"unknown preset silently accepted")
   -- One explicit preset supplies the reference combination; setup values override tuning flags.
