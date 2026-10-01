@@ -1,0 +1,58 @@
+---
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: Install system dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm \
+            git \
+            cmake \
+            pkgconf \
+            cmark-gfm \
+            litehtml \
+            cairo \
+            pango \
+            gtk3 \
+            neovim \
+            imagemagick \
+            ttf-dejavu
+
+      - name: Checkout repository
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build native renderer
+        run: ./scripts/build.sh
+
+      - name: Run CLI smoke test
+        run: ./tests/smoke.sh
+
+      - name: Run headless plugin test
+        run: nvim --headless -u NONE -l tests/plugin.lua
+
+      - name: Run theme palette test
+        run: nvim --headless -u NONE -l tests/theme.lua
+
+      - name: Run cursor visibility test
+        run: nvim --headless -u NONE -l tests/cursor.lua
