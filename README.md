@@ -1,81 +1,54 @@
-# mdview.nvim — experimental native Markdown preview
+# mdview.nvim — native Markdown preview for Neovim
 
-A proportional Markdown preview in a Neovim split using Kitty and `image.nvim`, with a persistent native renderer. The plugin now lives in this repository; real-document Kitty acceptance is still pending. No browser, Node.js, or Python runtime is used. Local-only agent notes may be present in the git-ignored `AGENTS.md`; they are not distributed with clones.
+Renders Markdown inside Neovim: full-window reader or source/preview split. Unlike `markdown-preview.nvim`, it draws in Kitty instead of opening a browser. It updates from unsaved buffer contents.
 
-**Pipeline:** `cmark-gfm → HTML + local CSS → litehtml v0.10 + Cairo/Pango → PNG (default) / RGBA (opt-in) → Kitty`.
+The output is rasterized (no text selection or clickable links). Runtime pipeline: `cmark-gfm → HTML/CSS → litehtml + Cairo/Pango → Kitty graphics`; no browser, Node.js, or Python runtime.
 
-## Install and use the plugin
+## Install
 
-Requires Neovim 0.10+, Kitty, configured [image.nvim](https://github.com/3rd/image.nvim) with its Kitty backend and `magick_cli` processor, ImageMagick, and the native packages listed below. Build explicitly with `./scripts/build.sh`; opening the plugin never downloads or compiles anything.
+Requirements: Linux, Neovim 0.10+, Kitty, ImageMagick, and `image.nvim` configured for Kitty and its `magick_cli` processor. Lazy.nvim can install `image.nvim` as a dependency, but does not configure it; see [image.nvim setup](https://github.com/3rd/image.nvim).
 
-For lazy.nvim, add a local spec (replace the path):
+Arch Linux native packages:
+
+```bash
+sudo pacman -S --needed base-devel cmake git pkgconf cmark-gfm litehtml cairo pango gtk3
+```
+
+Clone this repository, then build from its root:
+
+```bash
+./scripts/build.sh
+```
+
+This builds `build/mdview-preview`; it does not install system packages. If absent, the script downloads the litehtml v0.10 Cairo adapter into ignored `third_party/litehtml/` and links it to the system litehtml library. The versions must be compatible. The plugin does not build on startup.
+
+### lazy.nvim
+
+Set `dir` to this checkout. Add options in `setup`:
 
 ```lua
 return {
   {
-    dir = "/path/to/mdview-nvim-lite",
+    dir = "/absolute/path/to/mdview-nvim-lite",
     name = "mdview-nvim-lite",
     cmd = { "MdView", "MdViewOpen", "MdViewClose" },
     dependencies = { "3rd/image.nvim" },
     build = false,
+    config = function()
+      require("mdview").setup({
+        mode = "split", -- default: "replace" reader
+        split_follow = "cursor", -- default: "viewport"
+      })
+    end,
   },
 }
 ```
 
-Inside Kitty, open any Markdown file with your normal Neovim configuration and run `:MdView`. It toggles the preview using the configured mode (default: **reader mode**, `replace`). Because `MdView` is the shortest command, it appears first when completing `:MdV<Tab>`.
+`setup` is optional. `mode` accepts `"replace"` or `"split"`. In split mode, `"viewport"` follows the first visible source line; `"cursor"` follows active content.
 
-Use `:MdViewOpen [replace|split]` when you want to explicitly choose a mode and `:MdViewClose` to close the preview. `:MdView` is the one-command toggle: it opens when closed and closes when open, so it is convenient for repeated use and key mappings; it does not replace the explicit commands.
+Commands: `:MdView` toggles the configured mode; `:MdViewOpen [replace|split]` opens a selected mode; `:MdViewClose` closes the preview. Reader mode replaces the source window; `q` or `<Esc>` returns to the source. Split mode keeps both windows visible. One preview session is supported.
 
-In reader mode:
-- **Scroll:** `j` / `k` (step), `d` / `u` (half page), `<Space>` / `<C-f>` / `PageDown` (full page), `<S-Space>` / `<C-b>` / `PageUp`, `gg` (top), `G` (bottom), or mouse wheel.
-- **Navigate:** `]]` (next heading), `[[` (previous heading), `t` (table of contents picker via `vim.ui.select`).
-- **Search:** `/` (search forward in text), `?` (backward), `n` / `N` (next/prev match).
-- **Edit:** `i` / `a` (enter insert mode at current reading line), `o` (open line below), `e` / `<CR>` (normal mode at current line).
-- **Close:** `q` or `<Esc>` returns to your editor buffer at the exact line where you were reading.
-
-The document window hides the normal/visual cursor using Neovim's transparent
-cursor highlight (`termguicolors` required in the TUI). Command-line input,
-focused floats, source windows and closing/editing restore the original cursor
-configuration. The plugin does not enable `termguicolors` or change global Cursor colors.
-
-To open in side-by-side split mode instead:
-
-```vim
-:MdViewOpen split
-:MdView split
-```
-
-By default, split mode follows the first visible source line and clips at the last
-visible source block (`w0` to `w$`). If you mainly use side-by-side mode and want
-the preview to follow the content you are actively working on, cursor-follow is a
-good option. Keep the default `"viewport"` when you prefer the preview to track the
-first visible source line.
-
-```lua
-require("mdview").setup({ split_follow = "cursor" }) -- useful for cursor-oriented split use; default: "viewport"
-```
-
-Cursor follow moves the preview only enough to reveal the active rendered text
-row or the entire Mermaid diagram when it fits; moving within already visible
-content keeps the raster position. A heading immediately followed by a Mermaid
-fence includes that diagram in the reveal. If heading and diagram cannot fit
-together, the diagram takes priority; a diagram taller than the panel shows its
-start without invented relation-level positions. This mode does not clip at the
-source window's bottom line, center the cursor, or change the source viewport.
-It reacts to normal/insert cursor movement, reuses prepared diagrams on scrolling,
-and recalculates visibility after layout/viewport changes. Reader mode is unaffected.
-
-The preview reads unsaved buffer snapshots, never writes the source, resolves local images relative to the source file, coalesces edits/width changes, and draws only pane-height PNGs. Height changes recrop without relayout. Smooth scrolling uses source-byte ranges on rendered text leaves. One preview session is supported at a time. Switching the source window to another buffer closes the session.
-
-Optional configuration:
-
-```lua
-require("mdview").setup({
-  mode = "replace",                     -- "replace" (default reader mode) or "split" (side-by-side)
-  renderer = "/path/to/mdview-preview", -- defaults to this checkout's build/
-  stylesheet = "/path/to/markdown.css", -- defaults to styles/markdown.css
-})
-```
+The preview reads unsaved buffer contents and never writes the Markdown file. Local images resolve relative to the source file. Width changes and edits are coalesced; height changes recrop without relayout.
 
 ### Document color themes (opt-in)
 
@@ -127,20 +100,33 @@ Raw HTML currently produces an explicit preview error; removing it recovers with
 
 ### Experimental Mermaid fences (opt-in)
 
-The isolated, evaluated Merman CLI can render original `mermaid` fences automatically:
+Merman is separate from the base plugin and is **not enabled by default**. To use
+the opt-in:
 
-```lua
-require("mdview").setup({
-  mermaid = { renderer = "/absolute/path/to/build/merman-evaluation/target/release/merman-cli" },
-})
--- Disable again explicitly: require("mdview").setup({mermaid=false})
-```
+1. From the repository root, run `bash scripts/build-merman-evaluation`. This
+   explicitly downloads the pinned Merman source and Cargo dependencies, then
+   builds into the ignored `build/merman-evaluation/` directory; it does not
+   install Merman globally. The build requires Rust/Cargo 1.96.0 and network
+   access. `rustup` may download that toolchain if it is not already available.
+2. Add the renderer path to your existing `require("mdview").setup(...)` call:
 
-Omitted/false keeps existing literal code rendering. Opening never downloads,
-builds or installs Merman. This is an experimental Linux CLI integration, not a
-permanent dependency or complete Mermaid compatibility promise. The evaluated
-binary supports ER diagrams; other diagram families need a compatible build.
-See [MERMAID-RESEARCH.md](MERMAID-RESEARCH.md) for the pinned version and evaluation.
+   ```lua
+   require("mdview").setup({
+     mermaid = {
+       renderer = "/absolute/path/to/mdview-nvim-lite/build/merman-evaluation/target/release/merman-cli",
+     },
+   })
+   ```
+
+   Replace the path with this checkout's absolute path and keep your other setup
+   options in the same call. Restart Neovim after building/configuring.
+
+Without the `mermaid` option, Mermaid fences remain literal code blocks. Opening
+mdview never downloads, builds or installs Merman. This is an experimental Linux
+CLI integration, not a permanent dependency or complete Mermaid compatibility
+promise. The evaluated binary supports ER diagrams; other diagram families need
+a compatible build. See [MERMAID-RESEARCH.md](MERMAID-RESEARCH.md) for the pinned
+version and evaluation.
 
 The cmark AST detects fenced blocks whose first info word is exactly `mermaid`.
 Their unchanged content is rendered during **LOAD**, then composed as session-owned
@@ -321,15 +307,6 @@ In each reader, try your touchpad, hold the arrow keys, use `gg`, and press `q` 
 - **Concurrent headless stress (temporary prototype):** a varied 240-chapter fixture (1,909 source lines) survived eight edits, width changes, and scroll requests injected while revision 2 was laying out. The last viewport used the newest buffer position and width; the disk file remained unchanged. Three layouts and three frames were logged, with a clean worker exit. A separate single-run size sweep of varied 120/240/480-chapter fixtures measured XML/HTML attribution at 49/108/202 ms and native layout at 317/605/1,291 ms (552 px width); native renderer peak RSS was 73/122/220 MiB. The 480-chapter bounded frame showed the last heading. These are synthetic, headless, warm-machine observations, not Kitty visual acceptance, sustained-load performance, or arbitrary-Markdown support.
 - **Quantitative physical alignment and soft-wrap measurement:** on a 120-chapter varied fixture (953 lines, 52,646 px height at 552 px), all 528 attributed text lines matched actual Cairo/Pango draw coordinates within 0.5 px. Soft-wrap analysis showed that when Neovim uses `smoothscroll = true`, line-only anchors stay on row 0, producing up to 324.8 px desync (average 61.9–85.5 px) as `skipcol` increases; character-proportional interpolation still errs by up to 301.4 px, while the leaf-matching experiment reported 0.0 px against its own matching result (not an independent accuracy check). With `smoothscroll = false`, scrolling is by physical lines only (`skipcol = 0`). Raw HTML inline/block tags and comments fail explicitly (`raw HTML is not instrumented`) with clean preview error display and immediate recovery upon removal.
 - **Sustained overlapping stress probe:** a 5-wave headless test (6 rapid overlapping edits/resizes during in-flight layout, raw HTML error injection and recovery, 4 post-recovery edits, and a line-850 scroll) converged in 2.2 s total across 3 layouts and 4 frames. The final frame was non-blank, disk files were untouched, and 0 hanging persistent processes remained.
-
-## Build on Arch Linux
-
-```bash
-sudo pacman -S --needed base-devel cmake git pkgconf cmark-gfm litehtml cairo pango gtk3
-./scripts/build.sh
-```
-
-The system `litehtml` package provides the library, not its Cairo renderer. `scripts/build.sh` downloads the litehtml **v0.10** source into the ignored `third_party/litehtml/` directory to compile that adapter, then links against the system library. The adapter and library versions must remain compatible. No browser or Node.js is used.
 
 ## Render and view the fixture
 
