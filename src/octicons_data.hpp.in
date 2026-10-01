@@ -1,0 +1,13 @@
+// Vendored Primer Octicons; assets/octicons/LICENSE and docs/configuration.md.
+#pragma once
+#include <string_view>
+#include <array>
+namespace mdview {
+inline constexpr std::array<std::string_view, 5> octicon_svg = {
+    R"SVG(@OCTICON_info@)SVG",
+    R"SVG(@OCTICON_light-bulb@)SVG",
+    R"SVG(@OCTICON_report@)SVG",
+    R"SVG(@OCTICON_alert@)SVG",
+    R"SVG(@OCTICON_stop@)SVG"
+};
+}

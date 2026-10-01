@@ -134,6 +134,30 @@ performance assumptions. Reader cursor hiding requires `termguicolors`.
 See the [configuration guide](docs/configuration.md) for all setup options,
 custom stylesheets, fallbacks and advanced environment controls.
 
+## GitHub alerts (optional)
+
+Enable native `NOTE`, `TIP`, `IMPORTANT`, `WARNING` and `CAUTION` alerts:
+
+```lua
+require("mdview").setup({ alerts = true })
+```
+
+```markdown
+> [!WARNING]
+> Keep a backup before overwriting existing data.
+```
+
+Each alert has a title, a bundled GitHub Octicon and a colored left border, with
+dark, light and Neovim palette support. Unsaved edits update both reader and split;
+source navigation retains individual body-line anchors. Icons require the
+GdkPixbuf SVG loader (usually supplied by librsvg); no browser, font or download
+is needed at runtime. Rebuild the native renderer after updating this checkout.
+
+Omitted or `false` keeps ordinary quotes with literal markers. Only uppercase
+markers alone on the first line of a standalone quote are recognized; escaped,
+unknown, code and nested markers stay ordinary Markdown. Custom alert titles and
+collapsible admonitions are not supported. See [alert configuration](docs/configuration.md#github-alerts).
+
 ## Mermaid diagrams (optional)
 
 Mermaid fences remain literal code blocks unless explicitly enabled. The optional

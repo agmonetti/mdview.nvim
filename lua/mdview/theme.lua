@@ -1,7 +1,9 @@
 -- Document palettes: concrete color overrides only; layout stays in the user's CSS.
 local M = {}
-local dark = {bg="#0d1117", fg="#c9d1d9", heading="#e6edf3", accent="#58a6ff", muted="#8b949e", surface="#161b22", inline="#30363d", border="#30363d", code="#e6edf3"}
-local light = {bg="#fafafa", fg="#24292f", heading="#1f2328", accent="#0969da", muted="#57606a", surface="#eff1f3", inline="#e6e9ed", border="#c6ccd2", code="#24292f"}
+local dark = {bg="#0d1117", fg="#c9d1d9", heading="#e6edf3", accent="#58a6ff", muted="#8b949e", surface="#161b22", inline="#30363d", border="#30363d", code="#e6edf3",
+  alert_note="#4493f8", alert_tip="#3fb950", alert_important="#ab7df8", alert_warning="#d29922", alert_caution="#f85149"}
+local light = {bg="#fafafa", fg="#24292f", heading="#1f2328", accent="#0969da", muted="#57606a", surface="#eff1f3", inline="#e6e9ed", border="#c6ccd2", code="#24292f",
+  alert_note="#0969da", alert_tip="#1a7f37", alert_important="#8250df", alert_warning="#9a6700", alert_caution="#cf222e"}
 local function channels(hex)
   return tonumber(hex:sub(2,3),16), tonumber(hex:sub(4,5),16), tonumber(hex:sub(6,7),16)
 end
@@ -46,6 +48,15 @@ function M.resolve(name)
   p.inline=p.surface
   p.border=mix(p.bg,p.fg,0.22)
   p.code=readable(p.fg,p.surface,base.code)
+  p.alert_note=readable(highlight("DiagnosticInfo","fg") or base.alert_note,p.bg,base.alert_note)
+  p.alert_tip=readable(highlight("DiagnosticHint","fg") or base.alert_tip,p.bg,base.alert_tip)
+  p.alert_warning=readable(highlight("DiagnosticWarn","fg") or base.alert_warning,p.bg,base.alert_warning)
+  p.alert_caution=readable(highlight("DiagnosticError","fg") or base.alert_caution,p.bg,base.alert_caution)
+  local important=highlight("Special","fg") or highlight("Keyword","fg") or base.alert_important
+  if important==p.alert_note or important==p.alert_tip or important==p.alert_warning or important==p.alert_caution then
+    important=base.alert_important
+  end
+  p.alert_important=readable(important,p.bg,base.alert_important)
   return p
 end
 function M.css(p)
@@ -59,6 +70,17 @@ function M.css(p)
     "pre { background-color: "..p.surface.."; }",
     "pre code { color: "..(p.inline==p.surface and p.code or p.fg).."; background-color: transparent; }",
     "blockquote { color: "..p.muted.."; border-left-color: "..p.border.."; }",
+    ".mdview-alert { color: "..p.fg.."; }",
+    ".mdview-alert-note { border-left-color: "..p.alert_note.."; }",
+    ".mdview-alert-note .mdview-alert-title { color: "..p.alert_note.."; }",
+    ".mdview-alert-tip { border-left-color: "..p.alert_tip.."; }",
+    ".mdview-alert-tip .mdview-alert-title { color: "..p.alert_tip.."; }",
+    ".mdview-alert-important { border-left-color: "..p.alert_important.."; }",
+    ".mdview-alert-important .mdview-alert-title { color: "..p.alert_important.."; }",
+    ".mdview-alert-warning { border-left-color: "..p.alert_warning.."; }",
+    ".mdview-alert-warning .mdview-alert-title { color: "..p.alert_warning.."; }",
+    ".mdview-alert-caution { border-left-color: "..p.alert_caution.."; }",
+    ".mdview-alert-caution .mdview-alert-title { color: "..p.alert_caution.."; }",
     "h1, h2 { border-bottom-color: "..p.border.."; }",
     "tr, th, td { border-color: "..p.border.."; }",
     "th { background-color: "..p.surface.."; color: "..(p.inline==p.surface and p.code or "inherit").."; }",

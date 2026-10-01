@@ -13,9 +13,9 @@
 #include <vector>
 #include <cmark-gfm.h>
 #include <cmark-gfm-core-extensions.h>
-#include "render2png.cpp"
 #include <litehtml/render_item.h>
 
+#include "octicons.hpp"
 using Clock = std::chrono::steady_clock;
 struct Position { int line, column; };
 struct Label { std::string text; std::vector<Position> positions; };
@@ -134,6 +134,132 @@ class Markdown {
         labels.push_back(std::move(value));
         return prefix + "<span data-mdview=\"" + std::to_string(id) + "\">" + text + "</span>" + suffix;
     }
+    struct Alert {
+        int first, last, column, paragraph_last;
+        const char* type;
+        const char* title;
+    };
+    std::vector<Alert> find_alerts(cmark_node* root) const {
+        std::vector<Alert> result;
+        struct Spec { const char* marker; const char* type; const char* title; };
+        static constexpr Spec specs[] = {
+            {"[!NOTE]", "note", "Note"}, {"[!TIP]", "tip", "Tip"}, {"[!IMPORTANT]", "important", "Important"},
+            {"[!WARNING]", "warning", "Warning"}, {"[!CAUTION]", "caution", "Caution"}
+        };
+        for (auto quote = cmark_node_first_child(root); quote; quote = cmark_node_next(quote)) {
+            if (cmark_node_get_type(quote) != CMARK_NODE_BLOCK_QUOTE) continue;
+            const int first = cmark_node_get_start_line(quote);
+            if (first < 1 || first > static_cast<int>(lines.size())) continue;
+            const auto& line = lines[first-1];
+            size_t column = line.find_first_not_of(" ");
+            if (column == std::string::npos || column > 3 || line[column] != '>') continue;
+            ++column;
+            if (column < line.size() && (line[column] == ' ' || line[column] == '\t')) ++column;
+            auto end = line.find_last_not_of(" \t\r");
+            if (end == std::string::npos || end < column) continue;
+            for (const auto& spec : specs) {
+                if (line.compare(column, end-column+1, spec.marker) == 0) {
+                    auto first_block = cmark_node_first_child(quote);
+                    const int paragraph_last = first_block && cmark_node_get_type(first_block) == CMARK_NODE_PARAGRAPH
+                        ? cmark_node_get_end_line(first_block) : 0;
+                    result.push_back({first, cmark_node_get_end_line(quote), static_cast<int>(column), paragraph_last,
+                                      spec.type, spec.title});
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+    static void reject_html(cmark_node* parent) {
+        for (auto node = cmark_node_first_child(parent); node; node = cmark_node_next(node)) {
+            auto type = cmark_node_get_type(node);
+            if (type == CMARK_NODE_HTML_INLINE || type == CMARK_NODE_HTML_BLOCK)
+                throw std::runtime_error("Raw HTML is not supported (line " + std::to_string(cmark_node_get_start_line(node)) + ")");
+            reject_html(node);
+        }
+    }
+    void render_alerts(cmark_node* root, const std::vector<Alert>& alerts, bool marked) {
+        auto node = cmark_node_first_child(root);
+        for (const auto& alert : alerts) {
+            while (node && cmark_node_get_end_line(node) < alert.first) node = cmark_node_next(node);
+            auto wrapper = cmark_node_new(CMARK_NODE_CUSTOM_BLOCK);
+            std::string title = alert.title;
+            if (marked) {
+                Label value{title, std::vector<Position>(title.size(), {alert.first, alert.column})};
+                title = span(std::move(value));
+            }
+            const auto enter = "<div class=\"mdview-alert mdview-alert-" + std::string(alert.type)
+                + "\">\n<p class=\"mdview-alert-title\"><mdview-alert-icon class=\"mdview-alert-icon\" kind=\""
+                + alert.type + "\" aria-hidden=\"true\"></mdview-alert-icon>"
+                + title + "</p>\n";
+            cmark_node_set_on_enter(wrapper, enter.c_str());
+            cmark_node_set_on_exit(wrapper, "</div>\n");
+            if (!(node ? cmark_node_insert_before(node, wrapper) : cmark_node_append_child(root, wrapper))) {
+                cmark_node_free(wrapper);
+                throw std::runtime_error("Cannot insert alert");
+            }
+            // Masked marker lines can leave an empty quote or turn a lazy
+            // continuation into document children. Retain their original nodes
+            // and source coordinates, bounded by the original quote's extent.
+            cmark_node* continued = nullptr;
+            int continued_last = 0;
+            auto retain = [&](cmark_node* child) {
+                cmark_node_unlink(child);
+                const bool continuation = cmark_node_get_type(child) == CMARK_NODE_PARAGRAPH
+                    && cmark_node_get_end_line(child) <= alert.paragraph_last;
+                if (continuation && continued) {
+                    // A masked empty first line breaks lazy continuation at the
+                    // document level; restore its original paragraph grouping.
+                    const auto& previous = lines[continued_last-1];
+                    const auto end = previous.size() - (!previous.empty() && previous.back() == '\r' ? 1 : 0);
+                    const bool spaces = end >= 2 && previous[end-1] == ' ' && previous[end-2] == ' ';
+                    size_t backslashes = 0;
+                    while (backslashes < end && previous[end-backslashes-1] == '\\') ++backslashes;
+                    const bool escaped_break = backslashes % 2 != 0;
+                    if (escaped_break) {
+                        auto last = cmark_node_last_child(continued);
+                        if (last && cmark_node_get_type(last) == CMARK_NODE_TEXT) {
+                            std::string text = cmark_node_get_literal(last);
+                            if (!text.empty() && text.back() == '\\') {
+                                text.pop_back();
+                                cmark_node_set_literal(last, text.c_str());
+                            }
+                        }
+                    }
+                    auto separator = cmark_node_new(spaces || escaped_break ? CMARK_NODE_LINEBREAK : CMARK_NODE_SOFTBREAK);
+                    cmark_node_append_child(continued, separator);
+                    continued_last = cmark_node_get_end_line(child);
+                    while (auto inline_node = cmark_node_first_child(child)) {
+                        cmark_node_unlink(inline_node);
+                        cmark_node_append_child(continued, inline_node);
+                    }
+                    cmark_node_free(child);
+                } else {
+                    if (!cmark_node_append_child(wrapper, child)) {
+                        cmark_node_free(child);
+                        throw std::runtime_error("Cannot retain alert body");
+                    }
+                    if (continuation) {
+                        continued = child;
+                        continued_last = cmark_node_get_end_line(child);
+                    }
+                }
+            };
+            while (node && cmark_node_get_start_line(node) <= alert.last) {
+                auto next = cmark_node_next(node);
+                if (cmark_node_get_type(node) == CMARK_NODE_BLOCK_QUOTE) {
+                    while (auto child = cmark_node_first_child(node)) {
+                        retain(child);
+                    }
+                    cmark_node_unlink(node);
+                    cmark_node_free(node);
+                } else {
+                    retain(node);
+                }
+                node = next;
+            }
+        }
+    }
     void instrument(cmark_node* parent) {
         for (auto node = cmark_node_first_child(parent); node;) {
             auto next = cmark_node_next(node);
@@ -153,8 +279,13 @@ class Markdown {
                 cmark_node_free(node);
             } else if (type == CMARK_NODE_TEXT || type == CMARK_NODE_CODE) {
                 std::string text = cmark_node_get_literal(node);
-                std::string html = span(label(node, text, type == CMARK_NODE_CODE));
-                if (type == CMARK_NODE_CODE) html = "<code>" + html + "</code>";
+                std::string html;
+                if (type == CMARK_NODE_CODE) {
+                    // A nested span changes inline-code wrap geometry. Label the original code element.
+                    const auto id = labels.size();
+                    labels.push_back(label(node, text, true));
+                    html = "<code data-mdview=\"" + std::to_string(id) + "\">" + escape(text) + "</code>";
+                } else html = span(label(node, text));
                 auto replacement = cmark_node_new(CMARK_NODE_HTML_INLINE);
                 cmark_node_set_literal(replacement, html.c_str());
                 if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot label inline node"); }
@@ -212,17 +343,46 @@ class Markdown {
         }
     }
 public:
-    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr) {
+    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false) {
         lines.clear(); labels.clear(); mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
         cmark_gfm_core_extensions_ensure_registered();
-        auto parser = cmark_parser_new(CMARK_OPT_VALIDATE_UTF8);
-        for (auto name : {"table", "strikethrough", "autolink", "tasklist"})
-            cmark_parser_attach_syntax_extension(parser, cmark_find_syntax_extension(name));
-        cmark_parser_feed(parser, source.data(), source.size());
+        auto parse = [](const std::string& text) {
+            auto parser = cmark_parser_new(CMARK_OPT_VALIDATE_UTF8);
+            for (auto name : {"table", "strikethrough", "autolink", "tasklist"})
+                cmark_parser_attach_syntax_extension(parser, cmark_find_syntax_extension(name));
+            cmark_parser_feed(parser, text.data(), text.size());
+            return parser;
+        };
+        auto parser = parse(source);
         auto root = cmark_parser_finish(parser);
         try {
+            if (alerts) {
+                // Only custom nodes are trusted. In plain inspection mode there
+                // is no instrumentation pass to reject user-authored raw HTML.
+                reject_html(root);
+                const auto found = find_alerts(root);
+                std::string protected_source;
+                size_t offset = 0;
+                int line = 1;
+                for (const auto& alert : found) {
+                    if (protected_source.empty()) protected_source = source;
+                    while (line < alert.first) {
+                        offset += lines[line-1].size() + 1;
+                        ++line;
+                    }
+                    std::fill_n(protected_source.begin() + offset + alert.column,
+                                std::char_traits<char>::length(alert.type) + 3, ' ');
+                }
+                if (!protected_source.empty()) {
+                    cmark_node_free(root);
+                    cmark_parser_free(parser);
+                    parser = parse(protected_source);
+                    root = cmark_parser_finish(parser);
+                }
+                render_alerts(root, found, marked);
+            }
             if (marked) instrument(root);
             std::unique_ptr<char, decltype(&std::free)> rendered(cmark_render_html(root, CMARK_OPT_UNSAFE, cmark_parser_get_syntax_extensions(parser)), &std::free);
             std::string html(rendered.get());
@@ -263,11 +423,11 @@ static std::string document_html(const std::string& body, const std::string& css
     return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" + css + "</style></head><body><main class=\"markdown-body\">" + body + "</main></body></html>";
 }
 // Do not fetch remote resources. Decode local URLs safely (the upstream adapter assumes valid %xx).
-class Container : public html2png::container {
+class Container : public mdview::OcticonContainer {
     const MermaidRenderer* mermaid;
 public:
     Container(const std::string& base, html2png::converter* converter, const MermaidRenderer* renderer)
-        : html2png::container(base, converter), mermaid(renderer) {}
+        : mdview::OcticonContainer(base, converter), mermaid(renderer) {}
     cairo_surface_t* get_image(const std::string& url) override {
         if (url.find("://") != std::string::npos || url.find("data:") != std::string::npos) return nullptr;
         for (size_t i=0; i<url.size(); ++i) if (url[i]=='%') {
@@ -282,11 +442,11 @@ public:
 int main(int argc, char** argv) {
     std::cout << std::unitbuf;
     Markdown markdown;
-    if (argc == 5 && std::string(argv[1]) == "--html") {
-        try { std::cout << document_html(markdown.convert(read_file(argv[2]), std::string(argv[4]) == "marked"), read_file(argv[3])); return 0; }
+    if ((argc == 5 || (argc == 6 && std::string(argv[5]) == "alerts")) && std::string(argv[1]) == "--html") {
+        try { std::cout << document_html(markdown.convert(read_file(argv[2]), std::string(argv[4]) == "marked", nullptr, argc == 6), read_file(argv[3])); return 0; }
         catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
     }
-    if (argc != 1) { std::cerr << "Usage: mdview-preview [--html markdown css plain|marked]\n"; return 2; }
+    if (argc != 1) { std::cerr << "Usage: mdview-preview [--html markdown css plain|marked [alerts]]\n"; return 2; }
     install_mermaid_cleanup();
     MermaidRenderer mermaid;
     std::unique_ptr<html2png::converter> converter;
@@ -304,8 +464,14 @@ int main(int argc, char** argv) {
                 mermaid.clear();
                 int rev=0, w=0; std::string snapshot, base, css;
                 if (!(input >> rev >> w >> snapshot >> base >> css) || rev < 1 || w < 64 || w > 4096) throw std::runtime_error("Invalid LOAD request");
+                bool alerts = false;
                 std::string executable, diagrams, background, extra;
-                if (input >> executable) {
+                if (input >> executable && executable == "alerts=1") {
+                    alerts = true;
+                    executable.clear();
+                    input >> executable;
+                }
+                if (!executable.empty()) {
                     if (!(input >> diagrams >> background) || input >> extra) throw std::runtime_error("Invalid Mermaid LOAD options");
                     const auto expected = std::filesystem::path(unhex(snapshot)).parent_path() / "diagrams";
                     if (std::filesystem::path(unhex(diagrams)).lexically_normal() != expected.lexically_normal())
@@ -313,7 +479,7 @@ int main(int argc, char** argv) {
                     mermaid.configure(unhex(executable), unhex(diagrams), unhex(background), w);
                 }
                 auto t = Clock::now();
-                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid);
+                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts);
                 auto html = document_html(body, read_file(unhex(css)));
                 converter = std::make_unique<html2png::converter>(w, 800, 96.0, "sans-serif");
                 container = std::make_unique<Container>(unhex(base), converter.get(), &mermaid);

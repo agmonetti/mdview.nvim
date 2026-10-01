@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+mode=${1:-split}
+theme=${2:-dark}
+case "$mode" in replace|split) ;; *) echo 'Usage: manual-alerts [replace|split] [dark|light|nvim] [document.md]' >&2; exit 2;; esac
+case "$theme" in dark|light|nvim) ;; *) echo "Unknown theme: $theme" >&2; exit 2;; esac
+if [[ -n ${SSH_CLIENT-}${SSH_TTY-}${SSH_CONNECTION-}${TMUX-} || ( ${TERM-} != xterm-kitty && -z ${KITTY_WINDOW_ID-} ) ]]; then
+  echo 'Run inside local Kitty, outside SSH/tmux.' >&2; exit 1
+fi
+[[ -x $root/build/mdview-preview ]] || { echo 'Build first with ./scripts/build.sh' >&2; exit 1; }
+if [[ -n ${3-} ]]; then
+  document=$3
+else
+  fixture=$(mktemp -d /tmp/mdview-alerts.XXXXXX)
+  trap 'rm -rf -- "$fixture"' EXIT
+  cp -- "$root/examples/alerts.md" "$fixture/document.md"
+  document=$fixture/document.md
+fi
+[[ -f $document ]] || { echo "Missing document: $document" >&2; exit 1; }
+export MDVIEW_MANUAL_ROOT=$root MDVIEW_MANUAL_MODE=$mode MDVIEW_MANUAL_THEME=$theme
+nvim "$document" -c 'lua vim.opt.runtimepath:prepend(vim.env.MDVIEW_MANUAL_ROOT); package.loaded["mdview"]=nil; require("mdview").setup({alerts=true,theme=vim.env.MDVIEW_MANUAL_THEME,raw=false,smooth=false,zbelow=false,clamp=false}); require("mdview").open(vim.env.MDVIEW_MANUAL_MODE)'

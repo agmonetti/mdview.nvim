@@ -24,6 +24,7 @@ No option installs packages or builds a renderer.
 | `clamp` | Four terminal rows when smoothing or a clamp experiment is enabled | Maximum advance per reader frame, in **pixels**. A positive setup value also enables clamping. |
 | `wheel_step` | Four terminal rows per reader wheel callback | Wheel displacement in rows; does not change arrow/page mappings. |
 | `zbelow` | Off unless requested by environment | Request local raw transport and lower-layer placement; explicit `false` overrides the environment. |
+| `alerts` | Literal quote markers | `true` renders the five GitHub alert types; `false` disables the transformation. See [GitHub alerts](#github-alerts). |
 | `mermaid` | Literal code fences | `true` uses the bundled renderer; `false` disables diagrams; `{renderer="/absolute/path/to/merman-cli"}` selects a custom executable. See [Mermaid](#mermaid). |
 
 Explicit setup values override preset values and matching environment controls.
@@ -88,6 +89,8 @@ require("mdview").setup({
 | `Underlined`, then `Identifier` | Links. |
 | `Comment` | Secondary and quote text. |
 | `NormalFloat` | Code and table-header surfaces. |
+| `DiagnosticInfo`, `DiagnosticHint`, `DiagnosticWarn`, `DiagnosticError` | Note, Tip, Warning and Caution alert titles/borders. |
+| `Special`, then `Keyword` | Important alerts, with a built-in purple fallback if the selected color duplicates another alert. |
 
 Missing colors use the built-in palette chosen by Neovim's `background`. Missing
 or transparent `Normal.bg` does not imply black. Equal surfaces and decorative
@@ -105,6 +108,56 @@ on close. Direct highlight changes without those events require close/reopen.
 The dark/light/nvim palettes were user-reported working in Kitty; this does not
 validate every theme or contrast/geometry combination. See the
 [manual palette checklist](development.md#themes).
+
+## GitHub alerts
+
+```lua
+require("mdview").setup({ alerts = true })
+```
+
+Supported markers are `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` and
+`[!CAUTION]`, alone on the first source line of a document-level blockquote.
+Recognition uses the parsed block structure and original source spelling:
+escaped markers, markers in code, unknown/lowercase types and quotes nested in
+lists or other quotes remain ordinary Markdown.
+
+The generated title maps to the marker line; body text retains its own source
+anchors, rather than pinning the entire alert to the title. Supported Markdown
+formatting in the body is preserved. Raw HTML and unsupported source attribution
+still fail explicitly; this feature does not broaden arbitrary-Markdown support.
+Custom titles, folding and other admonition syntaxes are outside this feature.
+
+A preexisting attribution limitation remains: a bare autolink followed by a
+backslash hard break in a quote can fail with a source-text error. The same
+ordinary quote fails without alerts; two-space hard breaks are regression-covered.
+
+Stock CSS supplies border/spacing and a 16×16 icon box with `vertical-align: middle`.
+The five SVG shapes are bundled [Primer Octicons](https://github.com/primer/octicons)
+from commit [`90af1f14984832de34e94b2d530043fbcf85eb7f`](https://github.com/primer/octicons/commit/90af1f14984832de34e94b2d530043fbcf85eb7f)
+(19.38.0): `info`, `light-bulb`, `report`, `alert`, `stop`, respectively.
+The unmodified sources and [MIT license](../assets/octicons/LICENSE) are in
+`assets/octicons/`; CMake embeds them in both native binaries.
+
+The installed GdkPixbuf SVG loader (typically librsvg) decodes each used shape
+once per worker into a cached alpha mask. All five masks together occupy 1,280
+pixel bytes, excluding object/decoder overhead. Drawing tints the cached mask with
+the icon's computed CSS `color`, inherited from its title. Palette changes,
+edits, resizes and scrolling do not decode the same icon again. There are no
+generated icon files, subprocesses or runtime downloads. An unavailable SVG
+loader causes an explicit alert-rendering error; disabled alerts do not need it.
+Custom stylesheets must supply alert geometry using `.mdview-alert`,
+`.mdview-alert-title`, `.mdview-alert-icon` and the
+`.mdview-alert-<type>` classes (`note`, `tip`, `important`, `warning`, `caution`).
+Explicit document themes append alert color overrides, not geometry; the stock stylesheet shows
+the complete selectors. Adaptive nvim titles maintain at least 4.5:1 contrast
+against the document background. Theme refresh follows the existing
+ColorScheme/background lifecycle; scrolling does not repeat recognition.
+
+User Kitty screenshots show dark/light alerts; the original CSS approximations
+had alignment/shape defects. They have been replaced with bundled Octicons and
+checked against independent SVG silhouettes in native rasters. The new icons and
+interactive checklist still need user visual acceptance.
+See the [manual checklist](development.md#github-alerts).
 
 ## Fluid and transport fallbacks
 

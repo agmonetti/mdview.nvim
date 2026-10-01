@@ -226,6 +226,53 @@ Stock versus instrumented raw frames were byte-identical at README y0/y34098 and
 
 Native-profile writes reuse/truncate one repository runtime file, without Kitty deleting it; A/B uses the production sequence-specific filenames consumed by Kitty. The native profile isolates producer phases rather than reproducing that complete file lifecycle. Treat its write timings as the measured profiling workload, not an exact decomposition of every A/B frame.
 
+## Bundled alert Octicons — 2026-10-01
+
+Replaced CSS approximations with five local Primer Octicons, pinned to
+[`90af1f14984832de34e94b2d530043fbcf85eb7f`](https://github.com/primer/octicons/commit/90af1f14984832de34e94b2d530043fbcf85eb7f).
+SVG sources total **2,550 bytes**, plus the 1,068-byte upstream MIT license.
+No package installation or runtime download. Both renderers embed the SVGs;
+GdkPixbuf's installed SVG loader is required only when alerts are rendered.
+Five lazy, process-lifetime 16×16 A8 masks retain **1,280 pixel bytes**, excluding
+object/loader overhead. DRAW tints masks with computed CSS color; it does not
+parse SVG or read icon files.
+
+A small native-only comparison used the five-alert synthetic source retained in
+`tests/alerts-octicons-observed.json`, 700×800 RGBA output in `/tmp`, five processes
+per arm, alternating order, first process per arm discarded. Each process drew
+20 identical viewports and then reloaded/drew the source five times. No affinity
+or system-load isolation; not real input, terminal display or statistical equivalence.
+
+| Metric | Previous CSS shapes | Bundled SVG masks |
+|---|---:|---:|
+| Initial LOAD median | 19.73 ms | 44.20 ms |
+| Warm LOAD median | 3.39 ms | 2.96 ms |
+| DRAW + RGBA write median | 4.17 ms | 4.13 ms |
+| DRAW + RGBA write p95 | 5.00 ms | 5.21 ms |
+
+The initial LOAD pays SVG-loader setup; the measured extra cost was about 24 ms.
+This sample does not show a material median redraw increase, but cannot prove
+equivalent performance. A separate single `/proc` observation after one frame
+reported VmRSS 22,712→27,736 KiB and VmHWM 26,796→31,356 KiB. This includes loaded
+decoder/library pages, not just masks. Launch `wait4` RSS had an inherited
+high-water floor and is excluded from memory conclusions.
+
+Final local binaries grew 233,904→274,048 bytes (preview) and 137,656→199,872 bytes
+(standalone); build/compiler-specific sizes, not installed dependency size.
+An isolated loader-call observer saw five SVG decodes for 100 alerts and 21
+frames, and still five across three LOADs of 100 alerts each. Injected loader
+unavailability returned an explicit error; alerts disabled still rendered.
+
+Alert tests compare visible icon/title centers and independent ImageMagick SVG
+silhouettes at 360/700 px in dark/light/nvim, allowing rasterizer edge differences.
+Plain/marked parity, theme/edit/resize and cleanup regressions passed, as did
+plugin/theme/cursor/Mermaid/CLI checks. Native dark/light PNGs were inspected.
+Ordinary demo standalone output matched the previous binary with AE=0; the
+documented md2png command produced an actual 699×749 PNG. The user approved
+their Kitty visual checks and reported that the Octicons look much better.
+This is acceptance for their tested configuration, not universal compatibility
+or a terminal-latency measurement.
+
 ## Earlier prototype evidence
 
 - **Stage 1 validated:** rendered `examples/demo.md` to PNG and viewed it in Kitty.

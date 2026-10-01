@@ -35,6 +35,7 @@ With the existing native build and ImageMagick available:
 nvim --headless -u NONE -l tests/plugin.lua
 nvim --headless -u NONE -l tests/theme.lua
 nvim --headless -u NONE -l tests/cursor.lua
+nvim --headless -u NONE -l tests/alerts.lua
 ```
 
 The optional real-Merman check additionally needs the explicitly built evaluation
@@ -56,6 +57,10 @@ nvim --headless -u NONE -l tests/mermaid.lua
   custom CSS precedence and coalesced theme/edit/resize reloads.
 - `cursor.lua` checks focus, command-line, colorscheme and close restoration,
   including preservation of newer external cursor settings.
+- `alerts.lua` checks the five visible titles/borders, false-positive boundaries,
+  marker/body anchors, ambiguous parsing and lazy continuation, contrast and
+  plain/attributed pixel parity at two widths across three palettes, diagnostic-only
+  recoloring, unsaved edits, split/reader scroll/resize, disable and cleanup.
 - `mermaid.lua` exercises actual Merman/native rendering, independent image pixel
   comparison, two-diagram navigation, unsaved changes, invalid input/recovery,
   latest revision, cursor-follow, height/width changes, palettes and cancellation.
@@ -113,6 +118,29 @@ working; this checklist remains useful for another configuration.
 
 This launcher deliberately forces raw, smoothing and zbelow **off**. It isolates
 palette presentation and cannot validate popup occlusion through lower layers.
+
+### GitHub alerts
+
+```bash
+bash scripts/manual-alerts split dark
+bash scripts/manual-alerts replace light
+bash scripts/manual-alerts split nvim /absolute/path/to/document.md
+```
+
+Arguments are mode, theme and optional document. Without a document, the launcher
+copies `examples/alerts.md` into a temporary directory, leaving the tracked fixture
+untouched. It enables only alert/palette presentation and explicitly disables
+raw, smoothing and zbelow; normal Neovim configuration supplies image.nvim.
+
+Check the five titles, icons, colored borders and body formatting. Edit a marker
+and body without saving, scroll through interior lines, resize and close/reopen.
+In nvim mode, change colorscheme and check alert readability. Escaped/unknown/code
+markers must stay literal. Discard probe edits with `:qall!`.
+Native dark/light Octicon PNGs were inspected; actual Kitty acceptance of these
+new shapes is pending. Rebuild the native binaries and restart/close the existing
+preview worker before checking. The bounded native cost comparison and its limits
+are recorded in [REPORT](../REPORT.md#bundled-alert-octicons--2026-10-01) and
+`tests/alerts-octicons-observed.json`; it is not a terminal smoothness benchmark.
 
 ### Mermaid
 

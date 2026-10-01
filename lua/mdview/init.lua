@@ -156,6 +156,7 @@ function M.setup(opts)
   opts = opts or {}
   assert(opts.preset == nil or opts.preset == "fluid", "mdview: unknown preset " .. tostring(opts.preset))
   assert(opts.zbelow == nil or type(opts.zbelow) == "boolean", "mdview: zbelow must be boolean")
+  assert(opts.alerts == nil or type(opts.alerts) == "boolean", "mdview: alerts must be boolean")
   assert(opts.split_follow == nil or opts.split_follow == "viewport" or opts.split_follow == "cursor",
     "mdview: split_follow must be 'viewport' or 'cursor'")
   assert(opts.theme == nil or opts.theme == "dark" or opts.theme == "light" or opts.theme == "nvim",
@@ -294,6 +295,7 @@ function M.open(mode)
   s.split_follow = mode == "split" and options.split_follow == "cursor"
   local theme = options.theme
   local mermaid = options.mermaid
+  local alerts = options.alerts == true
   local base_css
   if theme then
     base_css = table.concat(vim.fn.readfile(options.stylesheet), "\n")
@@ -404,6 +406,7 @@ function M.open(mode)
       s.fragments = {}
       status("Rendering Markdown…")
       local load = {"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}
+      if alerts then load[#load+1] = "alerts=1" end
       if mermaid then
         load[#load+1] = hex(mermaid.renderer)
         load[#load+1] = hex(directory .. "/diagrams")

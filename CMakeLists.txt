@@ -17,18 +17,26 @@ find_library(LITEHTML_LIBRARY NAMES litehtml REQUIRED)
 find_path(LITEHTML_INCLUDE_DIR NAMES litehtml.h PATH_SUFFIXES litehtml REQUIRED)
 set(CAIRO_DIR "${LITEHTML_SOURCE_DIR}/containers/cairo")
 
+# Embed only the five pinned alert icons; no runtime paths or downloads.
+foreach(icon info light-bulb report alert stop)
+    set(svg "${CMAKE_SOURCE_DIR}/assets/octicons/${icon}-16.svg")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${svg}")
+    file(READ "${svg}" "OCTICON_${icon}")
+endforeach()
+configure_file(src/octicons_data.hpp.in "${CMAKE_BINARY_DIR}/generated/octicons_data.hpp" @ONLY)
+
 add_executable(mdview-render
     src/main.cpp
     "${CAIRO_DIR}/cairo_borders.cpp"
     "${CAIRO_DIR}/container_cairo.cpp"
     "${CAIRO_DIR}/container_cairo_pango.cpp"
     "${CAIRO_DIR}/conic_gradient.cpp"
-    "${CAIRO_DIR}/render2png.cpp"
 )
 target_include_directories(mdview-render PRIVATE
     "${CAIRO_DIR}"
     "${LITEHTML_SOURCE_DIR}/include"
     "${LITEHTML_INCLUDE_DIR}"
+    "${CMAKE_BINARY_DIR}/generated"
 )
 target_link_libraries(mdview-render PRIVATE PkgConfig::RENDER_LIBS "${LITEHTML_LIBRARY}")
 target_compile_options(mdview-render PRIVATE -Wall -Wextra)
@@ -41,6 +49,6 @@ add_executable(mdview-preview
     "${CAIRO_DIR}/container_cairo_pango.cpp"
     "${CAIRO_DIR}/conic_gradient.cpp"
 )
-target_include_directories(mdview-preview PRIVATE "${CAIRO_DIR}" "${LITEHTML_SOURCE_DIR}/include" "${LITEHTML_INCLUDE_DIR}")
+target_include_directories(mdview-preview PRIVATE "${CAIRO_DIR}" "${LITEHTML_SOURCE_DIR}/include" "${LITEHTML_INCLUDE_DIR}" "${CMAKE_BINARY_DIR}/generated")
 target_link_libraries(mdview-preview PRIVATE PkgConfig::RENDER_LIBS PkgConfig::CMARK "${LITEHTML_LIBRARY}")
 target_compile_options(mdview-preview PRIVATE -Wall -Wextra)
