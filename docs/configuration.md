@@ -24,7 +24,7 @@ No option installs packages or builds a renderer.
 | `clamp` | Four terminal rows when smoothing or a clamp experiment is enabled | Maximum advance per reader frame, in **pixels**. A positive setup value also enables clamping. |
 | `wheel_step` | Four terminal rows per reader wheel callback | Wheel displacement in rows; does not change arrow/page mappings. |
 | `zbelow` | Off unless requested by environment | Request local raw transport and lower-layer placement; explicit `false` overrides the environment. |
-| `mermaid` | Literal code fences | `false` or `{renderer="/absolute/path/to/merman-cli"}`. See [Mermaid](#mermaid). |
+| `mermaid` | Literal code fences | `true` uses the bundled renderer; `false` disables diagrams; `{renderer="/absolute/path/to/merman-cli"}` selects a custom executable. See [Mermaid](#mermaid). |
 
 Explicit setup values override preset values and matching environment controls.
 `clamp=false` only disables the configured clamp when smoothing and the P3/C
@@ -160,11 +160,26 @@ source/float focus and close, preserving newer external guicursor changes.
 
 ## Mermaid
 
-Follow the [optional build instructions](../README.md#experimental-mermaid-support)
+Follow the [optional build instructions](../README.md#mermaid-diagrams-optional)
 first. The evaluated pin is Merman `v0.8.0-alpha.7`, commit
 `580e39b69cc1b0ca35c4f8272683e622b2e9b8db`, built with ER, SVG and PNG features.
 Other diagram families require a compatible build; complete official Mermaid
 semantics/visual compatibility is not promised.
+
+Enable with `mermaid = true` in your existing setup call. The executable is
+resolved relative to the plugin checkout, not Neovim's working directory:
+`build/merman-evaluation/target/release/merman-cli`. Nothing is downloaded or
+built when opening a preview; a missing executable reports the build command.
+Omitting the option leaves it disabled on initial setup; explicit `false`
+disables it after a previous opt-in.
+
+For a separately built compatible executable, use this instead:
+
+```lua
+mermaid = {
+  renderer = "/absolute/path/to/merman-cli",
+},
+```
 
 Fenced blocks whose first info word is exactly `mermaid` pass their unchanged
 content to the configured executable, without a shell, during **LOAD**. Generated

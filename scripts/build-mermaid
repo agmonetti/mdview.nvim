@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Explicit opt-in experiment: downloads source/crates, never installs or links the plugin.
+# Explicit optional renderer build: downloads source/crates, never installs globally.
 set -euo pipefail
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 work="$root/build/merman-evaluation"

@@ -20,7 +20,7 @@ are different kinds of evidence; do not substitute one for another.
 | `scripts/build.sh`, `CMakeLists.txt` | Native build using the litehtml v0.10 Cairo adapter and system libraries. |
 | `tests/*.lua`, `tests/smoke.sh` | Regression checks. |
 | `tests/bench/`, `scripts/bench-scroll`, `scripts/bench-diagnose` | Frozen benchmark fixture, instrumentation and launchers. |
-| `tests/merman/`, `scripts/build-merman-evaluation` | Optional pinned Merman evaluation. |
+| `tests/merman/`, `scripts/build-mermaid` | Optional pinned Merman build and evaluation. |
 
 `build/` and `third_party/litehtml/` are generated dependency/build directories,
 not plugin source. Ordinary previews have no Python/Node/browser runtime; the
@@ -117,7 +117,7 @@ palette presentation and cannot validate popup occlusion through lower layers.
 ### Mermaid
 
 Explicitly build the optional renderer first; see
-[Mermaid setup](../README.md#experimental-mermaid-support).
+[Mermaid setup](../README.md#mermaid-diagrams-optional).
 
 ```bash
 bash scripts/manual-merman replace

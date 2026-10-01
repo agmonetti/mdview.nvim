@@ -221,6 +221,37 @@ local function check()
   assert(call_count()==0,"renderer ran without Mermaid opt-in")
   close(baseline)
 
+  -- Bundled opt-in resolves from the checkout even when cwd is elsewhere.
+  scheme(1)
+  vim.cmd("lcd " .. vim.fn.fnameescape(directory))
+  mdview.setup({theme="nvim",mermaid=true})
+  mdview.open("replace")
+  wait(function() local s=mdview.status(); return s and settled(s) end,"bundled Mermaid opt-in")
+  local bundled=mdview.status()
+  matches_reference(bundled,reference,1)
+  close(bundled)
+  vim.cmd("lcd " .. vim.fn.fnameescape(root))
+
+  mdview.setup({mermaid=false})
+  mdview.open("replace")
+  wait(function() local s=mdview.status(); return s and settled(s) end,"explicit Mermaid disable")
+  local disabled=mdview.status()
+  native_frame(source,disabled,directory .. "/disabled.png")
+  assert(pixels_equal(directory .. "/disabled.png",save(directory .. "/disabled-displayed.png",assert(displayed))),
+    "explicit false did not restore literal fences")
+  close(disabled)
+
+  local original_notify=vim.notify
+  local notice
+  vim.notify=function(message) notice=message end
+  mdview.setup({mermaid={renderer=directory .. "/missing renderer"}})
+  local opened,open_error=pcall(mdview.open,"replace")
+  vim.notify=original_notify
+  assert(opened,open_error)
+  assert(not mdview.status() and notice and notice:find("missing renderer",1,true)
+    and notice:find(root .. "/scripts/build-mermaid",1,true),
+    "missing executable did not report the actionable build command before opening")
+
   for _, mode in ipairs({"replace","split"}) do
     vim.o.columns=110; vim.o.lines=36
     prepare_source()

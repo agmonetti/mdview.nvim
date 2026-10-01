@@ -134,31 +134,35 @@ performance assumptions. Reader cursor hiding requires `termguicolors`.
 See the [configuration guide](docs/configuration.md) for all setup options,
 custom stylesheets, fallbacks and advanced environment controls.
 
-## Experimental Mermaid support
+## Mermaid diagrams (optional)
 
 Mermaid fences remain literal code blocks unless explicitly enabled. The optional
 Merman CLI integration preserves the original fences and renders unsaved changes
 automatically. The evaluated build supports **ER diagrams**, not complete Mermaid
 compatibility; relationship labels can overlap.
 
-From the checkout, explicitly build the pinned optional renderer:
+1. From the checkout, explicitly build the pinned optional renderer:
 
-```bash
-bash scripts/build-merman-evaluation
-```
+   ```bash
+   ./scripts/build-mermaid
+   ```
 
-This downloads Merman source and Cargo dependencies into `build/merman-evaluation/`;
-it does not install Merman globally. Rust/Cargo 1.96.0 and network access are
-required; rustup may download that toolchain if missing. Add this to your existing
-setup call, using your checkout's absolute path:
+   Requires Rust/Cargo 1.96.0 and network access. This downloads Merman source and
+   Cargo dependencies into `build/merman-evaluation/`, without a global Merman
+   installation. Rustup may download the toolchain if missing.
 
-```lua
-require("mdview").setup({
-  mermaid = {
-    renderer = "/absolute/path/to/mdview.nvim/build/merman-evaluation/target/release/merman-cli",
-  },
-})
-```
+2. Add `mermaid = true` to your existing setup call:
+
+   ```lua
+   require("mdview").setup({
+     mermaid = true,
+   })
+   ```
+
+The plugin finds the bundled renderer automatically; no executable path is needed.
+Opening a preview never downloads or builds it. If the renderer is missing, the
+preview reports the build command. A custom executable path is an
+[advanced option](docs/configuration.md#mermaid).
 
 Restart Neovim after building/configuring. Diagram errors identify the opening
 source line and recover after correction. Large graphs may exceed resource limits.

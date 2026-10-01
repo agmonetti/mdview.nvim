@@ -10,7 +10,7 @@ case "$mode" in
     fi
     [[ -x "$root/build/mdview-preview" ]] || { printf '%s\n' 'Build first with ./scripts/build.sh' >&2; exit 1; }
     binary="$root/build/merman-evaluation/target/release/merman-cli"
-    [[ -x "$binary" ]] || { printf '%s\n' 'Build the authorized evaluation first with scripts/build-merman-evaluation; no automatic download/build.' >&2; exit 1; }
+    [[ -x "$binary" ]] || { printf '%s\n' 'Build Mermaid first with bash scripts/build-mermaid; no automatic download/build.' >&2; exit 1; }
     if [[ -n ${2-} ]]; then
       fixture=$2
       [[ -f "$fixture" ]] || { printf 'Document not found: %s\n' "$fixture" >&2; exit 1; }
@@ -25,9 +25,9 @@ case "$mode" in
         printf '\n```\n\n## End\n\nNo exported images or source rewriting.\n'
       } > "$fixture"
     fi
-    export MDVIEW_MANUAL_ROOT=$root MDVIEW_MANUAL_MODE=$mode MDVIEW_MANUAL_MERMAN=$binary
+    export MDVIEW_MANUAL_ROOT=$root MDVIEW_MANUAL_MODE=$mode
     printf 'Opening automatic Mermaid in mdview %s mode; normal Neovim configuration is preserved. Use :qall! to discard unsaved probe edits.\n' "$mode"
-    nvim "$fixture" -c 'lua vim.opt.runtimepath:prepend(vim.env.MDVIEW_MANUAL_ROOT); require("mdview").setup({split_follow="cursor",mermaid={renderer=vim.env.MDVIEW_MANUAL_MERMAN}}); require("mdview").open(vim.env.MDVIEW_MANUAL_MODE)'
+    nvim "$fixture" -c 'lua vim.opt.runtimepath:prepend(vim.env.MDVIEW_MANUAL_ROOT); require("mdview").setup({split_follow="cursor",mermaid=true}); require("mdview").open(vim.env.MDVIEW_MANUAL_MODE)'
     ;;
   light|dark)
     theme=default

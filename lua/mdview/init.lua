@@ -160,11 +160,14 @@ function M.setup(opts)
     "mdview: split_follow must be 'viewport' or 'cursor'")
   assert(opts.theme == nil or opts.theme == "dark" or opts.theme == "light" or opts.theme == "nvim",
     "mdview: unknown theme " .. tostring(opts.theme))
-  assert(opts.mermaid == nil or opts.mermaid == false
+  assert(opts.mermaid == nil or type(opts.mermaid) == "boolean"
     or (type(opts.mermaid) == "table" and type(opts.mermaid.renderer) == "string" and opts.mermaid.renderer ~= ""),
-    "mdview: mermaid must be false or {renderer='/path/to/merman-cli'}")
+    "mdview: mermaid must be true, false or {renderer='/path/to/merman-cli'}")
   local preset = opts.preset == "fluid" and {raw=true, smooth=true, factor=0.6, clamp=84} or {}
   options = vim.tbl_extend("force", options, preset, opts)
+  if options.mermaid == true then
+    options.mermaid = {renderer = root .. "/build/merman-evaluation/target/release/merman-cli"}
+  end
 end
 
 function M.close()
@@ -232,6 +235,11 @@ function M.open(mode)
   if vim.fn.has("nvim-0.10") == 0 then return notify("Neovim 0.10+ is required") end
   if vim.fn.executable(options.renderer) ~= 1 then return notify("Build the renderer first: " .. root .. "/scripts/build.sh") end
   if vim.fn.filereadable(options.stylesheet) ~= 1 then return notify("Stylesheet not found: " .. options.stylesheet) end
+  if options.mermaid and vim.fn.executable(options.mermaid.renderer) ~= 1 then
+    return notify("Mermaid renderer not executable: " .. options.mermaid.renderer
+      .. ". Build the bundled renderer with: bash " .. vim.fn.shellescape(root .. "/scripts/build-mermaid")
+      .. " (or correct mermaid.renderer)")
+  end
   local source_win, source_buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
   if vim.bo[source_buf].buftype ~= "" then return notify("Open a Markdown source buffer first") end
   local ok, image = pcall(require, "image")

@@ -55,7 +55,7 @@ Each measurement includes process startup, parsing, layout, host font discovery,
 ### Reproduce and inspect
 
 ```bash
-bash scripts/build-merman-evaluation  # explicit download/build only; no installation
+bash scripts/build-mermaid           # explicit download/build only; no installation
 python3 tests/merman/evaluate.py      # actual CLI semantic/render/resource probes
 bash scripts/manual-merman replace   # inside Kitty: full-window mdview reader
 bash scripts/manual-merman split     # inside Kitty: source left, mdview preview right
@@ -119,8 +119,10 @@ of this behavior remains pending; no default/dependency/dotfile change.
 
 ### Experimental integration contract
 
-`setup({mermaid={renderer="/absolute/path/to/merman-cli"}})` extends LOAD only;
-omitted/false retains literal fences. The controller passes session artifact
+`setup({mermaid=true})` locates the bundled renderer automatically;
+`setup({mermaid={renderer="/absolute/path/to/merman-cli"}})` selects a custom build.
+Both extend LOAD only; omitted/false retains literal fences on initial setup.
+The controller passes session artifact
 directory and explicit palette background (otherwise stock `#0d1117`). Native
 cmark detection preserves the buffer/file and invokes the executable without a
 shell. Generated PNGs participate in normal litehtml layout; DRAW does not rerender
