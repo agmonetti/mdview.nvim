@@ -15,14 +15,16 @@ return {
   {
     dir = "/path/to/mdview-nvim-lite",
     name = "mdview-nvim-lite",
-    cmd = { "MdViewOpen", "MdViewClose", "MdViewToggle" },
+    cmd = { "MdView", "MdViewOpen", "MdViewClose" },
     dependencies = { "3rd/image.nvim" },
     build = false,
   },
 }
 ```
 
-Inside Kitty, open any Markdown file with your normal Neovim configuration and run `:MdViewOpen`. By default, it opens in **reader mode** (`replace`), replacing the current window with a full-width rendered view with pixel scrolling, TOC, and bidirectional cursor sync.
+Inside Kitty, open any Markdown file with your normal Neovim configuration and run `:MdView`. It toggles the preview using the configured mode (default: **reader mode**, `replace`). Because `MdView` is the shortest command, it appears first when completing `:MdV<Tab>`.
+
+Use `:MdViewOpen [replace|split]` when you want to explicitly choose a mode and `:MdViewClose` to close the preview. `:MdView` is the one-command toggle: it opens when closed and closes when open, so it is convenient for repeated use and key mappings; it does not replace the explicit commands.
 
 In reader mode:
 - **Scroll:** `j` / `k` (step), `d` / `u` (half page), `<Space>` / `<C-f>` / `PageDown` (full page), `<S-Space>` / `<C-b>` / `PageUp`, `gg` (top), `G` (bottom), or mouse wheel.
@@ -40,14 +42,17 @@ To open in side-by-side split mode instead:
 
 ```vim
 :MdViewOpen split
-:MdViewToggle split
+:MdView split
 ```
 
 By default, split mode follows the first visible source line and clips at the last
-visible source block (`w0` to `w$`). To keep the content at the cursor visible instead:
+visible source block (`w0` to `w$`). If you mainly use side-by-side mode and want
+the preview to follow the content you are actively working on, cursor-follow is a
+good option. Keep the default `"viewport"` when you prefer the preview to track the
+first visible source line.
 
 ```lua
-require("mdview").setup({ split_follow = "cursor" }) -- default: "viewport"
+require("mdview").setup({ split_follow = "cursor" }) -- useful for cursor-oriented split use; default: "viewport"
 ```
 
 Cursor follow moves the preview only enough to reveal the active rendered text

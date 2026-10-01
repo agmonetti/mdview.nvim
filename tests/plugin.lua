@@ -17,6 +17,11 @@ package.preload["image.utils.term"] = function()
   return {get_size=function() return {cell_width=10, cell_height=20} end}
 end
 local mdview = require("mdview")
+vim.cmd("runtime plugin/mdview.lua")
+local command_completion = vim.fn.getcompletion("MdV", "cmdline")
+assert(command_completion[1] == "MdView", "toggle is not first in command completion")
+assert(vim.fn.exists(":MdViewOpen") == 2 and vim.fn.exists(":MdViewClose") == 2,
+  "explicit open/close commands are missing")
 local function wait(predicate, description)
   assert(vim.wait(15000, predicate, 10), description .. ": " .. tostring(mdview.status() and mdview.status().error))
 end
@@ -85,7 +90,7 @@ local function check()
   vim.cmd("edit " .. vim.fn.fnameescape(path))
   vim.wo.wrap=true; vim.wo.smoothscroll=true
   vim.wo.number=false; vim.wo.signcolumn="no"
-  mdview.open("split")
+  vim.cmd("MdView split")
   wait(function() local s=mdview.status(); return s and s.frame and not s.busy end, "initial frame")
   local s=mdview.status()
   assert(api.nvim_win_get_buf(s.source_win) ~= s.preview_buf, "shared source buffer")
@@ -166,7 +171,7 @@ local function check()
   local orig_win = api.nvim_get_current_win()
   local orig_buf = api.nvim_get_current_buf()
   api.nvim_win_set_cursor(orig_win, {5, 0})
-  mdview.open("replace")
+  vim.cmd("MdViewOpen replace")
   wait(function() local new=mdview.status(); return new and new.frame and not new.busy end, "replace open")
   local rep = mdview.status()
   assert(rep.mode == "replace", "mode is not replace")
@@ -187,9 +192,9 @@ local function check()
   api.nvim_feedkeys("q", "x", true)
   wait(function() return not mdview.status() end, "replace close with q")
   assert(api.nvim_win_get_buf(orig_win) == orig_buf, "replace close did not restore source buffer")
-  -- Test default mode via toggle() is now "replace"
+  -- Test the primary toggle command's configured default mode ("replace").
   api.nvim_win_set_cursor(orig_win, {1, 0})
-  mdview.toggle()
+  vim.cmd("MdView")
   wait(function() local new=mdview.status(); return new and new.frame and not new.busy end, "default replace open")
   local reopened = mdview.status()
   assert(reopened.mode == "replace", "default mode is not replace")
@@ -217,11 +222,11 @@ local function check()
   assert(api.nvim_win_get_buf(orig_win) == orig_buf, "replace e did not restore source buffer")
   assert(vim.fn.jobwait({reopened.job}, 2000)[1]==0)
   -- Test explicit "split" mode
-  mdview.open("split")
+  vim.cmd("MdView split")
   wait(function() local new=mdview.status(); return new and new.frame and not new.busy end, "explicit split open")
   local split_s = mdview.status()
   assert(split_s.mode == "split", "explicit mode is not split")
-  mdview.close()
+  vim.cmd("MdView")
   assert(not mdview.status())
 
   -- Test raw RGBA mode: opt-in, support detection (local Kitty vs SSH/non-Kitty), Kitty transmission, and burst latency
