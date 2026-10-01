@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Explicit opt-in experiment: downloads source/crates, never installs or links the plugin.
+set -euo pipefail
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+work="$root/build/merman-evaluation"
+pin=580e39b69cc1b0ca35c4f8272683e622b2e9b8db
+mkdir -p "$work"
+if [[ ! -d "$work/source" ]]; then
+  git clone --depth 1 --branch v0.8.0-alpha.7 https://github.com/Latias94/merman.git "$work/source"
+fi
+actual=$(git -C "$work/source" rev-parse HEAD)
+if [[ "$actual" != "$pin" ]]; then
+  printf 'Refusing unexpected Merman revision: %s (expected %s)\n' "$actual" "$pin" >&2
+  exit 1
+fi
+export CARGO_HOME="$work/cargo" CARGO_TARGET_DIR="$work/target"
+# Ignore upstream rust-toolchain.toml; use the already installed compiler.
+export RUSTUP_TOOLCHAIN=1.96.0
+cargo build --manifest-path "$work/source/Cargo.toml" --locked --release \
+  -p merman-cli --no-default-features --features diagram-er,svg,png -j 2

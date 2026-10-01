@@ -156,8 +156,13 @@ function M.setup(opts)
   opts = opts or {}
   assert(opts.preset == nil or opts.preset == "fluid", "mdview: unknown preset " .. tostring(opts.preset))
   assert(opts.zbelow == nil or type(opts.zbelow) == "boolean", "mdview: zbelow must be boolean")
+  assert(opts.split_follow == nil or opts.split_follow == "viewport" or opts.split_follow == "cursor",
+    "mdview: split_follow must be 'viewport' or 'cursor'")
   assert(opts.theme == nil or opts.theme == "dark" or opts.theme == "light" or opts.theme == "nvim",
     "mdview: unknown theme " .. tostring(opts.theme))
+  assert(opts.mermaid == nil or opts.mermaid == false
+    or (type(opts.mermaid) == "table" and type(opts.mermaid.renderer) == "string" and opts.mermaid.renderer ~= ""),
+    "mdview: mermaid must be false or {renderer='/path/to/merman-cli'}")
   local preset = opts.preset == "fluid" and {raw=true, smooth=true, factor=0.6, clamp=84} or {}
   options = vim.tbl_extend("force", options, preset, opts)
 end
@@ -278,7 +283,9 @@ function M.open(mode)
     dirty=true, busy=false, loaded=false, pending="", fragments={}, error=nil, tick=-1, initial_line=initial_line,
     current_y=0, initialized_y=false, raw=raw_supported, raw_image_id=raw_image_id, smooth=smooth }
   s.stylesheet = options.stylesheet
+  s.split_follow = mode == "split" and options.split_follow == "cursor"
   local theme = options.theme
+  local mermaid = options.mermaid
   local base_css
   if theme then
     base_css = table.concat(vim.fn.readfile(options.stylesheet), "\n")
@@ -324,15 +331,46 @@ function M.open(mode)
     local win = source_win
     local result = api.nvim_win_call(win, function()
       local view = vim.fn.winsaveview()
+      local botline = vim.fn.line("w$", win)
+      local topline = view.topline
+      -- conceal_lines can leave a hidden closing fence as the logical topline.
+      -- Anchor the first displayed line, not the previous diagram's hidden fence.
+      while topline < botline
+        and api.nvim_win_text_height(win, {start_row=topline-1, end_row=topline-1}).all == 0 do
+        topline = topline + 1
+      end
       local col = 0
-      if (view.skipcol or 0) > 0 then
+      if topline == view.topline and (view.skipcol or 0) > 0 then
         -- skipcol is in display cells; source attribution is in UTF-8 bytes, not characters.
         col = math.max(0, vim.fn.virtcol2col(win, view.topline, view.skipcol + 1) - 1)
       end
-      local botline = vim.fn.line("w$", win)
-      return {view.topline, col, botline}
+      local cursor_line, cursor_col, through_line, previous_top = 0, 0, 0, -1
+      if s.split_follow then
+        local cursor = api.nvim_win_get_cursor(win)
+        if cursor[1] >= topline and cursor[1] <= botline then
+          cursor_line, cursor_col, through_line = cursor[1], cursor[2], cursor[1]
+          -- A heading immediately followed by a diagram represents that diagram too.
+          local text = api.nvim_buf_get_lines(source_buf, cursor_line-1, cursor_line, false)[1] or ""
+          if mermaid and text:match("^%s*#+%s+") then
+            local next_line = cursor_line + 1
+            while next_line <= api.nvim_buf_line_count(source_buf) do
+              local following = api.nvim_buf_get_lines(source_buf, next_line-1, next_line, false)[1] or ""
+              if following:match("%S") then
+                local fence, language = following:match("^%s*([`~]+)%s*(%S+)")
+                if fence and (fence:match("^```+$") or fence:match("^~~~+$")) and language == "mermaid" then
+                  through_line = next_line
+                end
+                break
+              end
+              next_line = next_line + 1
+            end
+          end
+          if s.frame and s.frame.revision == s.revision then previous_top = s.frame.y end
+        end
+      end
+      return {topline, col, botline, cursor_line, cursor_col, through_line, previous_top}
     end)
-    return result[1], result[2], result[3]
+    return unpack(result)
   end
   local function send(command)
     if vim.fn.chansend(s.job, command .. "\n") == 0 then error("Renderer stdin is closed") end
@@ -357,7 +395,13 @@ function M.open(mode)
       s.dirty, s.busy, s.loaded, s.error = false, true, false, nil
       s.fragments = {}
       status("Rendering Markdown…")
-      send(table.concat({"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}, " "))
+      local load = {"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}
+      if mermaid then
+        load[#load+1] = hex(mermaid.renderer)
+        load[#load+1] = hex(directory .. "/diagrams")
+        load[#load+1] = hex(s.palette and s.palette.bg or "#0d1117")
+      end
+      send(table.concat(load, " "))
     elseif s.loaded then
       if not s.smooth and s.clamp_max and s.target_y then
         local base_y = s.last_drawn_y or s.current_y or 0
@@ -369,8 +413,8 @@ function M.open(mode)
           s.current_y = s.target_y
         end
       end
-      local line, col, botline = position()
-      local key = table.concat({s.revision, line, col, botline, w, h}, ":")
+      local line, col, botline, cursor_line, cursor_col, through_line, previous_top = position()
+      local key = table.concat({s.revision, line, col, botline, w, h, cursor_line or 0, cursor_col or 0, through_line or 0}, ":")
       if key == s.last_key then return end
       local now = vim.uv.hrtime() / 1000000
       if not s.smooth and s.next_frame_at and now < s.next_frame_at then
@@ -388,7 +432,12 @@ function M.open(mode)
       else
         s.frame_path = directory .. "/frame-" .. (s.sequence % 2) .. ".png"
       end
-      send(table.concat({"DRAW", s.revision, s.sequence, line, col, botline, h, hex(s.frame_path)}, " "))
+      local draw = {"DRAW", s.revision, s.sequence, line, col, botline, h, hex(s.frame_path)}
+      if s.split_follow then
+        s.request_cursor_key = table.concat({cursor_line, cursor_col, through_line}, ":")
+        vim.list_extend(draw, {cursor_line, cursor_col, through_line, previous_top})
+      end
+      send(table.concat(draw, " "))
     end
   end
   safe_pump = function()
@@ -486,12 +535,13 @@ function M.open(mode)
       end
       safe_pump()
     elseif op == "FRAME" then
-      local line_now, col_now = position()
+      local line_now, col_now, _, cursor_line, cursor_col, through_line = position()
       local sized, w, h = pcall(size)
       if not sized then status(w); return end
       local tick_check = api.nvim_buf_get_changedtick(source_buf) ~= s.tick
       -- Reader frames remain useful while input advances; rejecting them starves continuous scroll.
       local moved = s.mode == "split" and (tonumber(parts[4]) ~= line_now or tonumber(parts[5]) ~= col_now)
+      if s.split_follow and s.request_cursor_key ~= table.concat({cursor_line, cursor_col, through_line}, ":") then moved = true end
       if s.dirty or tick_check or moved or tonumber(parts[2]) ~= s.revision
         or tonumber(parts[7]) ~= w or tonumber(parts[8]) ~= h then
         safe_pump(); return
@@ -577,6 +627,11 @@ function M.open(mode)
     api.nvim_create_autocmd("OptionSet", {group=s.group, pattern="background", callback=refresh_theme})
   end
   api.nvim_create_autocmd("WinScrolled", {group=s.group, callback=function() debounce(100, false) end})
+  if s.split_follow then
+    api.nvim_create_autocmd({"CursorMoved", "CursorMovedI"}, {group=s.group, buffer=source_buf, callback=function()
+      if api.nvim_get_current_win() == source_win then debounce(0, false) end
+    end})
+  end
   api.nvim_create_autocmd({"WinResized", "VimResized"}, {group=s.group, callback=function()
     if not valid() then return end
     local sized, w=pcall(size)

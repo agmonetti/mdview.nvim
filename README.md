@@ -43,7 +43,22 @@ To open in side-by-side split mode instead:
 :MdViewToggle split
 ```
 
-In split mode, the preview bounds rendering to match the visible lines of the source window (`w0` to `w$`).
+By default, split mode follows the first visible source line and clips at the last
+visible source block (`w0` to `w$`). To keep the content at the cursor visible instead:
+
+```lua
+require("mdview").setup({ split_follow = "cursor" }) -- default: "viewport"
+```
+
+Cursor follow moves the preview only enough to reveal the active rendered text
+row or the entire Mermaid diagram when it fits; moving within already visible
+content keeps the raster position. A heading immediately followed by a Mermaid
+fence includes that diagram in the reveal. If heading and diagram cannot fit
+together, the diagram takes priority; a diagram taller than the panel shows its
+start without invented relation-level positions. This mode does not clip at the
+source window's bottom line, center the cursor, or change the source viewport.
+It reacts to normal/insert cursor movement, reuses prepared diagrams on scrolling,
+and recalculates visibility after layout/viewport changes. Reader mode is unaffected.
 
 The preview reads unsaved buffer snapshots, never writes the source, resolves local images relative to the source file, coalesces edits/width changes, and draws only pane-height PNGs. Height changes recrop without relayout. Smooth scrolling uses source-byte ranges on rendered text leaves. One preview session is supported at a time. Switching the source window to another buffer closes the session.
 
@@ -103,7 +118,73 @@ Compare readability and unchanged layout. In `nvim`, change your colorscheme whi
 scrolling/editing, resize, then close/reopen. Real Kitty visual acceptance remains
 pending; headless checks cannot substitute for it.
 
-Raw HTML currently produces an explicit preview error; removing it recovers without restarting Neovim. Remote images are not fetched. Mermaid, math rendering, syntax highlighting, interactive links/text selection, and exact alignment with conceal/virtual source text are not supported or validated. Source columns for transformed Markdown are mapped through cmark literals; unsupported attribution fails explicitly rather than publishing a guessed mapping. Whole-document layout memory and edit/width-change cost still grow with document size; only raster allocation is bounded.
+Raw HTML currently produces an explicit preview error; removing it recovers without restarting Neovim. Remote images are not fetched. Math rendering, syntax highlighting, interactive links/text selection, and exact alignment with conceal/virtual source text are not supported or validated. Source columns for transformed Markdown are mapped through cmark literals; unsupported attribution fails explicitly rather than publishing a guessed mapping. Whole-document layout memory and edit/width-change cost still grow with document size; only raster allocation is bounded.
+
+### Experimental Mermaid fences (opt-in)
+
+The isolated, evaluated Merman CLI can render original `mermaid` fences automatically:
+
+```lua
+require("mdview").setup({
+  mermaid = { renderer = "/absolute/path/to/build/merman-evaluation/target/release/merman-cli" },
+})
+-- Disable again explicitly: require("mdview").setup({mermaid=false})
+```
+
+Omitted/false keeps existing literal code rendering. Opening never downloads,
+builds or installs Merman. This is an experimental Linux CLI integration, not a
+permanent dependency or complete Mermaid compatibility promise. The evaluated
+binary supports ER diagrams; other diagram families need a compatible build.
+See [MERMAID-RESEARCH.md](MERMAID-RESEARCH.md) for the pinned version and evaluation.
+
+The cmark AST detects fenced blocks whose first info word is exactly `mermaid`.
+Their unchanged content is rendered during **LOAD**, then composed as session-owned
+local PNGs. No exported image links or source changes are required. Unsaved edits,
+width changes and explicit document-theme changes regenerate diagrams; scroll and
+height-only resize reuse prepared layout. Rapid edits coalesce through the existing
+revision pipeline; obsolete frames are not displayed. Failures clear the old
+preview, identify the block's opening line and recover after correction. Closing
+stops pending subprocesses and removes generated files.
+
+Source navigation associates **every line of a diagram with the whole block**,
+not a rendered entity or relation. Diagram background follows explicit
+`theme="dark"|"light"|"nvim"`; luminance selects Merman dark/default colors, not
+an exact copy of every document color. Without an explicit theme, diagrams use
+stock dark background `#0d1117`, including with custom stylesheets.
+
+Resource limits: 1 MiB source per fence, 16 diagrams and 16 Mi pixels retained per
+LOAD. Each PNG is at most `viewport_width - 64` pixels wide (minimum 1), 4096 tall
+and 4 Mi pixels; the header is checked before decoding. The isolated process has
+a **768 MiB address-space cap** covering intermediate allocations, 6 CPU seconds,
+24 MiB output-file cap and 6-second wall deadline; Mermaid preparation has a
+15-second LOAD budget. These caps can reject large graphs; they are not evidence
+of low peak memory, a sandbox for arbitrary executables, or bounded Markdown layout.
+
+Inside local Kitty, with the normal Neovim/image.nvim configuration:
+
+```bash
+bash scripts/manual-merman replace /absolute/path/to/document.md
+bash scripts/manual-merman split /absolute/path/to/document.md
+# Without a document argument, use the original reference and boundary fences.
+```
+
+Exit one Neovim before opening the other. Check initial automatic rendering, change
+an entity/label without saving, introduce and correct a syntax error, scroll,
+resize, close/reopen, and discard probe edits with `:qall!`. Reader: `e` enters
+the source; `:MdViewOpen replace` returns to the preview; `q` closes. Split:
+edit/scroll the source and close with `:MdViewClose`. The user reports automatic
+diagram presentation looks good in reader and split, except overlapping relationship
+labels above `discounts`; the supplied web-app reference also shows overlap there.
+The subsequent interactive checklist passed in reader mode; split passed except
+delayed scroll-follow near the next diagram. A reproduced concealed-line case kept
+the previous diagram's hidden closing fence as Neovim's logical topline. Split now
+anchors the first displayed source line instead; regression and real-TUI dispatch
+checks passed with image display mocked. The user reported improvement, then
+clarified that the preview should follow the cursor rather than wait for the
+source topline to reach the second section. The opt-in `split_follow="cursor"`
+implements minimal reveal scrolling; `scripts/manual-merman split` enables it.
+Native pixel/resize/rapid-cursor regressions and natural TUI cursor events passed
+with image display mocked; Kitty visual acceptance of cursor follow is pending.
 
 ### Opt-in fluid preset
 
@@ -170,6 +251,7 @@ Historical F1/F3/PNG0/P2 flags belonged to isolated benchmark copies and are **n
 nvim --headless -u NONE -l tests/plugin.lua  # native renderer + Lua controller; mocked image display
 nvim --headless -u NONE -l tests/theme.lua   # palette contrast, native geometry/pixels, live theme reload
 nvim --headless -u NONE -l tests/cursor.lua  # viewer focus and cursor restoration transitions
+nvim --headless -u NONE -l tests/mermaid.lua # opt-in fences; requires evaluated isolated Merman binary
 ```
 
 The plugin regression check also exercises continuous reader wheel/arrow input, intermediate frame publication, final scroll convergence, and initial placement (mocked image display). It covers PNG pixel parity between plain and attributed HTML (including tables, nested lists, entities, code indentation, and a relative local image), actual Neovim soft-wrap scroll with UTF-8 and repeated text, unsaved edits, resize, error recovery, overlapping events, a document exceeding Cairo's full-image height limit, this repository's README, close/reopen, and worker/temp-file cleanup. It does **not** establish Kitty visual acceptance or support for arbitrary Markdown.

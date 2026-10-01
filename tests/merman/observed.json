@@ -1,0 +1,1041 @@
+{
+  "pin": "580e39b69cc1b0ca35c4f8272683e622b2e9b8db",
+  "binary_sha256": "a03bd4df441cc947b67d181656b481a3c3232498c3b67b2e54f20e4c92303281",
+  "fixture_sha256": "9adc985a76d4835fd03ffdaf00e051decf2ec0278be3b956329a6975a5ee860b",
+  "semantic_checks": "14 entities / 20 exact relationships; boundary cardinalities, roles, types, attributes",
+  "timing_scope": "fresh process wall time and per-process wait4 peak RSS; repeats are warm filesystem, not persistent-worker renders",
+  "records": [
+    {
+      "name": "version",
+      "command": [
+        "--version"
+      ],
+      "exit": 0,
+      "elapsed_ms": 2.215005999460118,
+      "peak_rss_kib": 21948
+    },
+    {
+      "name": "capabilities",
+      "command": [
+        "capabilities",
+        "--json"
+      ],
+      "exit": 0,
+      "elapsed_ms": 1.9818790005956544,
+      "peak_rss_kib": 22268
+    },
+    {
+      "name": "reference-parse",
+      "command": [
+        "parse",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--pretty"
+      ],
+      "exit": 0,
+      "elapsed_ms": 6.553291001182515,
+      "peak_rss_kib": 22268
+    },
+    {
+      "name": "reference-default-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-default-320.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "320",
+        "--background",
+        "#ffffff",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 125.19034899924009,
+      "peak_rss_kib": 27584,
+      "width": 320,
+      "height": 286,
+      "sha256": "750c1e5ad384fe1312d9c0f04643a276d201b9e64603b89fc89ddb3990c67043"
+    },
+    {
+      "name": "reference-default-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-default-672.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "672",
+        "--background",
+        "#ffffff",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 213.62421000048926,
+      "peak_rss_kib": 27752,
+      "width": 672,
+      "height": 600,
+      "sha256": "5e2e707257302dab4e61d44316aa162c41712c5d757aac44e9a7a49ca283cb46"
+    },
+    {
+      "name": "reference-dark-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-dark-320.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "320",
+        "--background",
+        "#0d1117",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 171.19536500104005,
+      "peak_rss_kib": 27652,
+      "width": 320,
+      "height": 286,
+      "sha256": "69fe0aa4858338357bd3003616076b723ffb835fe3217fda8c4ee561666ff26e"
+    },
+    {
+      "name": "reference-dark-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-dark-672.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "672",
+        "--background",
+        "#0d1117",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 195.53563899899018,
+      "peak_rss_kib": 27748,
+      "width": 672,
+      "height": 600,
+      "sha256": "ba9cdd6c0001f208f1c629c010a1457f2b5b4bd948961a3be03473c4b33c67bf"
+    },
+    {
+      "name": "reference-svg",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference.svg",
+        "--svg-pipeline",
+        "resvg-safe",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 55.76661099985358,
+      "peak_rss_kib": 22396
+    },
+    {
+      "name": "boundary-parse",
+      "command": [
+        "parse",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--pretty"
+      ],
+      "exit": 0,
+      "elapsed_ms": 10.214640000413056,
+      "peak_rss_kib": 22396
+    },
+    {
+      "name": "boundary-default-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-default-320.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "320",
+        "--background",
+        "#ffffff",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 156.5201060002437,
+      "peak_rss_kib": 27724,
+      "width": 320,
+      "height": 123,
+      "sha256": "9618a5792b413e77f744ad4106b141b5fa8a87ea98c78e42fa20c4022c3fbc5d"
+    },
+    {
+      "name": "boundary-default-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-default-672.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "672",
+        "--background",
+        "#ffffff",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 174.76634200102126,
+      "peak_rss_kib": 27540,
+      "width": 672,
+      "height": 259,
+      "sha256": "f205670f747dbd669f61894d913c20998fa4633c67c37956913b1e3377357a3b"
+    },
+    {
+      "name": "boundary-dark-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-dark-320.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "320",
+        "--background",
+        "#0d1117",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 191.739582000082,
+      "peak_rss_kib": 27824,
+      "width": 320,
+      "height": 123,
+      "sha256": "349eb5acddba2788dd10406c198135a54f1f993b216d758b55dfa997033f2c14"
+    },
+    {
+      "name": "boundary-dark-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-dark-672.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "672",
+        "--background",
+        "#0d1117",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 159.09854599885875,
+      "peak_rss_kib": 27272,
+      "width": 672,
+      "height": 259,
+      "sha256": "fc54f6b41984094cbecfd5b735403780c9c07c8b45b4fd139614e0397bedeaeb"
+    },
+    {
+      "name": "boundary-svg",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary.svg",
+        "--svg-pipeline",
+        "resvg-safe",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 27.98759399956907,
+      "peak_rss_kib": 22396
+    },
+    {
+      "name": "repeat-0",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-0.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 216.8467100000271,
+      "peak_rss_kib": 27316
+    },
+    {
+      "name": "repeat-1",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-1.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 208.88339599878236,
+      "peak_rss_kib": 27408
+    },
+    {
+      "name": "repeat-2",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-2.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 194.50619099916366,
+      "peak_rss_kib": 27416
+    },
+    {
+      "name": "incomplete",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/incomplete.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/incomplete.png"
+      ],
+      "exit": 1,
+      "elapsed_ms": 7.721476000369876,
+      "peak_rss_kib": 22396
+    },
+    {
+      "name": "source-budget",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/budget.svg",
+        "--resource-limit",
+        "max_source_bytes=16"
+      ],
+      "exit": 1,
+      "elapsed_ms": 3.334582999741542,
+      "peak_rss_kib": 22396
+    },
+    {
+      "name": "raster-cap",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/capped.png",
+        "--raster-fit-width",
+        "10000",
+        "--raster-max-width",
+        "64",
+        "--raster-max-height",
+        "64",
+        "--raster-max-pixels",
+        "4096"
+      ],
+      "exit": 0,
+      "elapsed_ms": 154.79727299862134,
+      "peak_rss_kib": 27448
+    },
+    {
+      "name": "deadline",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/deadline.svg",
+        "--operation-timeout-ms",
+        "0"
+      ],
+      "exit": 1,
+      "elapsed_ms": 2.972194999529165,
+      "peak_rss_kib": 22396
+    }
+  ],
+  "environment": {
+    "rustc_used": "1.95.0 (upstream rust-toolchain.toml; rustup downloaded six components)",
+    "preexisting_rustc": "1.96.0",
+    "lock_sha256": "d6f4a4d87ddb5edbf4599ba1ffe0ba3f1bade3edd5a32103bb4f93a1a7957198",
+    "font_Arial": "Liberation Sans Regular",
+    "font_sans_serif": "DejaVu Sans Book",
+    "gdk_pixbuf": "2.44.7",
+    "librsvg": "2.62.3"
+  },
+  "gdk_decode": {
+    "reference": {
+      "width": 1335,
+      "height": 1189,
+      "n_channels": 4,
+      "rowstride": 5340
+    },
+    "boundary": {
+      "width": 857,
+      "height": 317,
+      "n_channels": 4,
+      "rowstride": 3428
+    }
+  },
+  "models": {
+    "reference": {
+      "accTitle": null,
+      "accDescr": null,
+      "direction": "TB",
+      "classes": {},
+      "entities": {
+        "users": {
+          "id": "entity-users-0",
+          "label": "users",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "buyers": {
+          "id": "entity-buyers-1",
+          "label": "buyers",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "sellers": {
+          "id": "entity-sellers-2",
+          "label": "sellers",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "notifications": {
+          "id": "entity-notifications-3",
+          "label": "notifications",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "addresses": {
+          "id": "entity-addresses-4",
+          "label": "addresses",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "carts": {
+          "id": "entity-carts-5",
+          "label": "carts",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "orders": {
+          "id": "entity-orders-6",
+          "label": "orders",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "products": {
+          "id": "entity-products-7",
+          "label": "products",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "discounts": {
+          "id": "entity-discounts-8",
+          "label": "discounts",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "categories": {
+          "id": "entity-categories-9",
+          "label": "categories",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "product_images": {
+          "id": "entity-product_images-10",
+          "label": "product_images",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "cart_items": {
+          "id": "entity-cart_items-11",
+          "label": "cart_items",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "order_items": {
+          "id": "entity-order_items-12",
+          "label": "order_items",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "receipts": {
+          "id": "entity-receipts-13",
+          "label": "receipts",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        }
+      },
+      "relationships": [
+        {
+          "entityA": "entity-users-0",
+          "roleA": "1:1 (id_user)",
+          "entityB": "entity-buyers-1",
+          "relSpec": {
+            "cardA": "ZERO_OR_ONE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-users-0",
+          "roleA": "1:1 (id_user)",
+          "entityB": "entity-sellers-2",
+          "relSpec": {
+            "cardA": "ZERO_OR_ONE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-users-0",
+          "roleA": "1:N (id_user)",
+          "entityB": "entity-notifications-3",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-buyers-1",
+          "roleA": "1:N (id_buyer)",
+          "entityB": "entity-addresses-4",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-buyers-1",
+          "roleA": "1:1 (id_buyer)",
+          "entityB": "entity-carts-5",
+          "relSpec": {
+            "cardA": "ONLY_ONE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-buyers-1",
+          "roleA": "1:N (id_buyer)",
+          "entityB": "entity-orders-6",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-sellers-2",
+          "roleA": "1:N (id_seller)",
+          "entityB": "entity-products-7",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-sellers-2",
+          "roleA": "1:N (id_seller)",
+          "entityB": "entity-discounts-8",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-categories-9",
+          "roleA": "1:N (id_category)",
+          "entityB": "entity-products-7",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-products-7",
+          "roleA": "1:N (id_product)",
+          "entityB": "entity-product_images-10",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-products-7",
+          "roleA": "1:N (id_product)",
+          "entityB": "entity-cart_items-11",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-products-7",
+          "roleA": "1:N (id_product)",
+          "entityB": "entity-order_items-12",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-carts-5",
+          "roleA": "1:N (id_cart)",
+          "entityB": "entity-cart_items-11",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-carts-5",
+          "roleA": "N:1 cupón ORDER (id_discount)",
+          "entityB": "entity-discounts-8",
+          "relSpec": {
+            "cardA": "ZERO_OR_ONE",
+            "cardB": "ZERO_OR_MORE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-discounts-8",
+          "roleA": "N:M (discount_products)",
+          "entityB": "entity-products-7",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ZERO_OR_MORE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-discounts-8",
+          "roleA": "N:M (discount_categories)",
+          "entityB": "entity-categories-9",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ZERO_OR_MORE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-orders-6",
+          "roleA": "1:N (id_order)",
+          "entityB": "entity-order_items-12",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-orders-6",
+          "roleA": "1:1 (id_order)",
+          "entityB": "entity-receipts-13",
+          "relSpec": {
+            "cardA": "ONLY_ONE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-orders-6",
+          "roleA": "N:1 cupón congelado (id_discount)",
+          "entityB": "entity-discounts-8",
+          "relSpec": {
+            "cardA": "ZERO_OR_ONE",
+            "cardB": "ZERO_OR_MORE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-orders-6",
+          "roleA": "1:N opcional (id_order)",
+          "entityB": "entity-notifications-3",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        }
+      ],
+      "type": "er",
+      "constants": {
+        "cardinality": {
+          "zeroOrOne": "ZERO_OR_ONE",
+          "zeroOrMore": "ZERO_OR_MORE",
+          "oneOrMore": "ONE_OR_MORE",
+          "onlyOne": "ONLY_ONE",
+          "mdParent": "MD_PARENT"
+        },
+        "identification": {
+          "nonIdentifying": "NON_IDENTIFYING",
+          "identifying": "IDENTIFYING"
+        }
+      }
+    },
+    "boundary": {
+      "accTitle": null,
+      "accDescr": null,
+      "direction": "TB",
+      "classes": {},
+      "entities": {
+        "person": {
+          "id": "entity-person-0",
+          "label": "person",
+          "attributes": [
+            {
+              "type": "int",
+              "name": "id",
+              "keys": [
+                "PK"
+              ],
+              "comment": "identificador"
+            },
+            {
+              "type": "string",
+              "name": "name",
+              "keys": [],
+              "comment": "José: nombre"
+            }
+          ],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "profile": {
+          "id": "entity-profile-1",
+          "label": "profile",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "optional": {
+          "id": "entity-optional-2",
+          "label": "optional",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "Records": {
+          "id": "entity-Records-3",
+          "label": "Records",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        },
+        "Entries": {
+          "id": "entity-Entries-4",
+          "label": "Entries",
+          "attributes": [],
+          "alias": "",
+          "shape": "erBox",
+          "cssClasses": "default",
+          "cssStyles": []
+        }
+      },
+      "relationships": [
+        {
+          "entityA": "entity-person-0",
+          "roleA": "exactamente uno: áéíóú",
+          "entityB": "entity-profile-1",
+          "relSpec": {
+            "cardA": "ONLY_ONE",
+            "cardB": "ONLY_ONE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-person-0",
+          "roleA": "cero o uno: cupón",
+          "entityB": "entity-optional-2",
+          "relSpec": {
+            "cardA": "ZERO_OR_ONE",
+            "cardB": "ZERO_OR_ONE",
+            "relType": "NON_IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-person-0",
+          "roleA": "uno o más: relación",
+          "entityB": "entity-Records-3",
+          "relSpec": {
+            "cardA": "ONE_OR_MORE",
+            "cardB": "ONE_OR_MORE",
+            "relType": "IDENTIFYING"
+          }
+        },
+        {
+          "entityA": "entity-person-0",
+          "roleA": "cero o más: N:M",
+          "entityB": "entity-Entries-4",
+          "relSpec": {
+            "cardA": "ZERO_OR_MORE",
+            "cardB": "ZERO_OR_MORE",
+            "relType": "NON_IDENTIFYING"
+          }
+        }
+      ],
+      "type": "er",
+      "constants": {
+        "cardinality": {
+          "zeroOrOne": "ZERO_OR_ONE",
+          "zeroOrMore": "ZERO_OR_MORE",
+          "oneOrMore": "ONE_OR_MORE",
+          "onlyOne": "ONLY_ONE",
+          "mdParent": "MD_PARENT"
+        },
+        "identification": {
+          "nonIdentifying": "NON_IDENTIFYING",
+          "identifying": "IDENTIFYING"
+        }
+      }
+    }
+  },
+  "capabilities": {
+    "schema_version": 2,
+    "cli_contract_version": 5,
+    "package": {
+      "name": "merman-cli",
+      "version": "0.8.0-alpha.7"
+    },
+    "compatibility": {
+      "mermaid": "12.0.0",
+      "mmdc": "11.17.0"
+    },
+    "descriptor": {
+      "schema_version": 1,
+      "digest": "sha256:f36a4518be6e5ad041629d3e5b117f2931703ac29b50c5de1e12c066620586ed"
+    },
+    "commands": [
+      "capabilities",
+      "detect",
+      "layout",
+      "mmdc",
+      "parse",
+      "render"
+    ],
+    "diagram_families": [
+      "er"
+    ],
+    "capabilities": [
+      {
+        "id": "png",
+        "kind": "output",
+        "description": "Export rendered diagrams as PNG.",
+        "implications": []
+      },
+      {
+        "id": "svg",
+        "kind": "output",
+        "description": "Render Mermaid input as SVG.",
+        "implications": []
+      }
+    ],
+    "outputs": [
+      {
+        "id": "png",
+        "description": "Portable Network Graphics output.",
+        "media_type": "image/png",
+        "system_fonts": {
+          "source_id": "host-system",
+          "discovery": "first-use",
+          "cache_scope": "process-global",
+          "host_dependent": true,
+          "caller_configurable": false,
+          "resource_bounded": false
+        },
+        "embedded_images": {
+          "source_ids": [
+            "data-url"
+          ],
+          "filesystem_access": false,
+          "network_access": false,
+          "caller_configurable": true,
+          "limits": {
+            "max_bytes_per_image": 16777216,
+            "max_total_bytes": 33554432,
+            "max_pixels_per_image": 16777216,
+            "max_total_pixels": 33554432
+          }
+        }
+      },
+      {
+        "id": "svg",
+        "description": "Scalable Vector Graphics output.",
+        "media_type": "image/svg+xml",
+        "system_fonts": null,
+        "embedded_images": null
+      }
+    ]
+  },
+  "visual_observation": "PNG inspected at 672 px: reference relation labels above discounts overlap; text is small. Boundary labels, attributes and markers visible. No user Kitty acceptance."
+}

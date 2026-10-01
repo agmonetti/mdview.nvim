@@ -1,0 +1,9 @@
+erDiagram
+    person {
+        int id PK "identificador"
+        string name "José: nombre"
+    }
+    person ||--|| profile : "exactamente uno: áéíóú"
+    person |o..o| optional : "cero o uno: cupón"
+    person }|--|{ Records : "uno o más: relación"
+    person }o..o{ Entries : "cero o más: N:M"

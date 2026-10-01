@@ -19,7 +19,16 @@
 using Clock = std::chrono::steady_clock;
 struct Position { int line, column; };
 struct Label { std::string text; std::vector<Position> positions; };
-struct Fragment { int line, column, end; double y; };
+struct Fragment { int line, column, end; double y; double block_bottom = 0; double bottom = 0; };
+static const Fragment* source_fragment(const std::vector<Fragment>& fragments, int line, int col) {
+    const Fragment *selected=nullptr, *preceding=nullptr, *following=nullptr;
+    for (const auto& f : fragments) {
+        if (f.line < line && (!preceding || f.line > preceding->line || (f.line == preceding->line && f.y > preceding->y))) preceding = &f;
+        if (f.line > line && (!following || f.line < following->line || (f.line == following->line && f.y < following->y))) following = &f;
+        if (f.line == line && (!selected || (f.column <= col && f.column > selected->column))) selected = &f;
+    }
+    return selected ? selected : (following ? following : preceding);
+}
 static std::string read_file(const std::string& path) {
     std::ifstream stream(path, std::ios::binary);
     if (!stream) throw std::runtime_error("Cannot read: " + path);
@@ -56,10 +65,12 @@ static std::string escape(const std::string& s) {
 static double elapsed(Clock::time_point t) {
     return std::chrono::duration<double, std::milli>(Clock::now()-t).count();
 }
+#include "mermaid.hpp"
 
 class Markdown {
     std::vector<std::string> lines;
     std::vector<Label> labels;
+    MermaidRenderer* mermaid = nullptr;
     // Decode entities with the same parser that supplied the authoritative literal.
     static std::string entity(const std::string& value) {
         auto node = cmark_parse_document(value.data(), value.size(), CMARK_OPT_DEFAULT);
@@ -151,6 +162,21 @@ class Markdown {
             } else if (type == CMARK_NODE_CODE_BLOCK) {
                 int length, offset; char character;
                 bool fenced = cmark_node_get_fenced(node, &length, &offset, &character);
+                std::istringstream info(cmark_node_get_fence_info(node));
+                std::string language; info >> language;
+                if (fenced && language == "mermaid" && mermaid && mermaid->enabled()) {
+                    const int first = cmark_node_get_start_line(node), last = cmark_node_get_end_line(node);
+                    auto png = mermaid->render(cmark_node_get_literal(node), first);
+                    auto html = "<p><img data-mdview-mermaid=\"" + std::to_string(first)
+                        + "\" data-mdview-mermaid-end=\"" + std::to_string(last)
+                        + "\" src=\"" + escape(png) + "\" alt=\"Mermaid diagram\" style=\"max-width:100%;height:auto\"></p>\n";
+                    auto replacement = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+                    cmark_node_set_literal(replacement, html.c_str());
+                    if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot insert Mermaid diagram"); }
+                    cmark_node_free(node);
+                    node = next;
+                    continue;
+                }
                 int n = cmark_node_get_start_line(node) + (fenced ? 1 : 0);
                 std::istringstream code(cmark_node_get_literal(node));
                 std::string text, html = "<pre><code>";
@@ -186,8 +212,8 @@ class Markdown {
         }
     }
 public:
-    std::string convert(const std::string& source, bool marked = true) {
-        lines.clear(); labels.clear();
+    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr) {
+        lines.clear(); labels.clear(); mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
         cmark_gfm_core_extensions_ensure_registered();
@@ -207,8 +233,15 @@ public:
     void collect(const std::shared_ptr<litehtml::render_item>& node, int id, std::map<int,size_t>& offsets, std::vector<Fragment>& fragments, int image_line = 0) const {
         if (!node->is_visible()) return;
         if (auto own = node->src_el()->get_attr("data-mdview-image")) image_line = std::stoi(own);
-        if (image_line && std::string(node->src_el()->get_tagName()) == "img")
-            fragments.push_back({image_line, 0, 0, node->get_placement().y});
+        if (image_line && std::string(node->src_el()->get_tagName()) == "img") {
+            const auto placement = node->get_placement();
+            fragments.push_back({image_line, 0, 0, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+        }
+        if (auto first = node->src_el()->get_attr("data-mdview-mermaid")) {
+            const int start = std::stoi(first), end = std::stoi(node->src_el()->get_attr("data-mdview-mermaid-end"));
+            const auto placement = node->get_placement();
+            for (int line = start; line <= end; ++line) fragments.push_back({line, 0, 0, placement.y, static_cast<double>(placement.y + placement.height)});
+        }
         if (auto own = node->src_el()->get_attr("data-mdview")) id = std::stoi(own);
         if (id >= 0 && node->src_el()->is_text()) {
             litehtml::string text; node->src_el()->get_text(text);
@@ -218,7 +251,8 @@ public:
             offsets[id] = found+text.size();
             if (text.find_first_not_of(" \t\r\n") != std::string::npos && !text.empty()) {
                 auto first = value.positions.at(found), last = value.positions.at(found+text.size()-1);
-                fragments.push_back({first.line, first.column, last.column, node->get_placement().y});
+                const auto placement = node->get_placement();
+                fragments.push_back({first.line, first.column, last.column, placement.y, 0, static_cast<double>(placement.y + placement.height)});
             }
         }
         for (const auto& child : node->children()) collect(child, id, offsets, fragments, image_line);
@@ -230,15 +264,19 @@ static std::string document_html(const std::string& body, const std::string& css
 }
 // Do not fetch remote resources. Decode local URLs safely (the upstream adapter assumes valid %xx).
 class Container : public html2png::container {
+    const MermaidRenderer* mermaid;
 public:
-    using html2png::container::container;
+    Container(const std::string& base, html2png::converter* converter, const MermaidRenderer* renderer)
+        : html2png::container(base, converter), mermaid(renderer) {}
     cairo_surface_t* get_image(const std::string& url) override {
         if (url.find("://") != std::string::npos || url.find("data:") != std::string::npos) return nullptr;
         for (size_t i=0; i<url.size(); ++i) if (url[i]=='%') {
             if (i+2 >= url.size() || !std::isxdigit(static_cast<unsigned char>(url[i+1])) || !std::isxdigit(static_cast<unsigned char>(url[i+2]))) return nullptr;
             i += 2;
         }
-        return html2png::container::get_image(url);
+        auto image = html2png::container::get_image(url);
+        if (!image && mermaid->owns_image(url)) throw std::runtime_error("Cannot decode Mermaid PNG");
+        return image;
     }
 };
 int main(int argc, char** argv) {
@@ -249,6 +287,8 @@ int main(int argc, char** argv) {
         catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
     }
     if (argc != 1) { std::cerr << "Usage: mdview-preview [--html markdown css plain|marked]\n"; return 2; }
+    install_mermaid_cleanup();
+    MermaidRenderer mermaid;
     std::unique_ptr<html2png::converter> converter;
     std::unique_ptr<Container> container;
     litehtml::document::ptr doc;
@@ -260,14 +300,23 @@ int main(int argc, char** argv) {
             std::string op; input >> op;
             if (op == "QUIT") break;
             if (op == "LOAD") {
+                doc.reset(); container.reset(); converter.reset(); fragments.clear(); revision = 0; width = 0;
+                mermaid.clear();
                 int rev=0, w=0; std::string snapshot, base, css;
                 if (!(input >> rev >> w >> snapshot >> base >> css) || rev < 1 || w < 64 || w > 4096) throw std::runtime_error("Invalid LOAD request");
+                std::string executable, diagrams, background, extra;
+                if (input >> executable) {
+                    if (!(input >> diagrams >> background) || input >> extra) throw std::runtime_error("Invalid Mermaid LOAD options");
+                    const auto expected = std::filesystem::path(unhex(snapshot)).parent_path() / "diagrams";
+                    if (std::filesystem::path(unhex(diagrams)).lexically_normal() != expected.lexically_normal())
+                        throw std::runtime_error("Mermaid artifacts must stay beside the session snapshot");
+                    mermaid.configure(unhex(executable), unhex(diagrams), unhex(background), w);
+                }
                 auto t = Clock::now();
-                auto body = markdown.convert(read_file(unhex(snapshot)));
+                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid);
                 auto html = document_html(body, read_file(unhex(css)));
-                doc.reset(); container.reset(); converter.reset(); fragments.clear();
                 converter = std::make_unique<html2png::converter>(w, 800, 96.0, "sans-serif");
-                container = std::make_unique<Container>(unhex(base), converter.get());
+                container = std::make_unique<Container>(unhex(base), converter.get(), &mermaid);
                 doc = litehtml::document::createFromString(html, container.get());
                 if (!doc) throw std::runtime_error("Cannot create layout");
                 doc->render(w);
@@ -279,26 +328,45 @@ int main(int argc, char** argv) {
             } else if (op == "DRAW") {
                 int rev=0, seq=0, line=0, col=0, botline=0, height=0; std::string output;
                 if (!(input >> rev >> seq >> line >> col >> botline >> height >> output) || rev != revision || !doc || line < 0 || col < 0 || height < 1 || height > 8192) throw std::runtime_error("Invalid DRAW request");
+                int cursor_line=0, cursor_col=0, through_line=0, previous_top=-1;
+                input >> std::ws;
+                const bool reveal = !input.eof();
+                if (reveal) {
+                    std::string extra;
+                    if (!(input >> cursor_line >> cursor_col >> through_line >> previous_top)
+                        || cursor_line < 0 || cursor_col < 0 || through_line < cursor_line || previous_top < -1
+                        || input >> extra) throw std::runtime_error("Invalid cursor reveal request");
+                }
                 int top = 0;
                 if (line == 0) {
                     top = std::max(0, col);
                 } else if (line > 1) {
-                    double y=0; int preceding=0, following=0; const Fragment* selected=nullptr;
-                    for (const auto& f : fragments) {
-                        if (f.line <= line && f.line > preceding) preceding = f.line;
-                        if (f.line > line && (!following || f.line < following)) following = f.line;
-                        if (f.line != line) continue;
-                        if (!selected || (f.column <= col && f.column > selected->column)) selected = &f;
+                    if (const auto* f = source_fragment(fragments, line, col))
+                        top = std::max(0, static_cast<int>(std::floor(f->y)));
+                }
+                if (reveal) {
+                    if (previous_top >= 0) top = previous_top;
+                    if (cursor_line > 0) {
+                        if (const auto* active = source_fragment(fragments, cursor_line, cursor_col)) {
+                            double first = active->y;
+                            double last = std::max({first, active->bottom, active->block_bottom});
+                            if (through_line > cursor_line) {
+                                if (const auto* end = source_fragment(fragments, through_line, 0)) {
+                                    last = std::max({last, end->y, end->bottom, end->block_bottom});
+                                    // Prefer the diagram if heading + graph cannot fit together.
+                                    if (end->block_bottom > 0 && std::ceil(last) - std::floor(first) > height) first = end->y;
+                                }
+                            }
+                            const int begin = static_cast<int>(std::floor(first));
+                            const int end = static_cast<int>(std::ceil(last));
+                            if (end - begin > height) {
+                                // A tall diagram has no relation-level navigation: retain its start.
+                                top = begin;
+                            } else if (begin < top) top = begin;
+                            else if (end > top + height) top = end - height;
+                        }
                     }
-                    if (selected) y = selected->y;
-                    else if (following) {
-                        y = doc->height();
-                        for (const auto& f : fragments) if (f.line == following) y = std::min(y, f.y);
-                    } else if (preceding) {
-                        y = 0;
-                        for (const auto& f : fragments) if (f.line == preceding) y = std::max(y, f.y);
-                    }
-                    top = std::max(0, static_cast<int>(std::floor(y)));
+                    top = std::max(0, std::min(top, std::max(0, static_cast<int>(std::ceil(doc->height())) - height)));
                 }
                 auto t = Clock::now();
                 auto surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
@@ -306,12 +374,12 @@ int main(int argc, char** argv) {
                 auto cr = cairo_create(surface);
                 cairo_set_source_rgb(cr, 13/255.0, 17/255.0, 23/255.0); cairo_paint(cr);
                 int clip_height = height;
-                if (botline > 0) {
+                if (botline > 0 && !reveal) {
                     double max_y = 0;
                     bool found = false;
                     for (const auto& f : fragments) {
                         if (f.line <= botline) {
-                            max_y = std::max(max_y, f.y);
+                            max_y = std::max(max_y, std::max(f.y, f.block_bottom));
                             found = true;
                         }
                     }
@@ -355,6 +423,10 @@ int main(int argc, char** argv) {
                 if (!saved || draw_status != CAIRO_STATUS_SUCCESS) throw std::runtime_error("Cannot write viewport PNG");
                 std::cout << "FRAME " << rev << ' ' << seq << ' ' << line << ' ' << col << ' ' << top << ' ' << width << ' ' << height << ' ' << elapsed(t) << '\n';
             } else throw std::runtime_error("Unknown request");
-        } catch (const std::exception& e) { std::cout << "ERROR " << hex(e.what()) << '\n'; }
+        } catch (const std::exception& e) {
+            doc.reset(); container.reset(); converter.reset(); fragments.clear(); revision = 0; width = 0;
+            mermaid.clear();
+            std::cout << "ERROR " << hex(e.what()) << '\n';
+        }
     }
 }

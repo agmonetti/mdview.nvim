@@ -1,0 +1,28 @@
+erDiagram
+    users ||--o| buyers : "1:1 (id_user)"
+    users ||--o| sellers : "1:1 (id_user)"
+    users ||--o{ notifications : "1:N (id_user)"
+
+    buyers ||--o{ addresses : "1:N (id_buyer)"
+    buyers ||--|| carts : "1:1 (id_buyer)"
+    buyers ||--o{ orders : "1:N (id_buyer)"
+
+    sellers ||--o{ products : "1:N (id_seller)"
+    sellers ||--o{ discounts : "1:N (id_seller)"
+
+    categories ||--o{ products : "1:N (id_category)"
+
+    products ||--o{ product_images : "1:N (id_product)"
+    products ||--o{ cart_items : "1:N (id_product)"
+    products ||--o{ order_items : "1:N (id_product)"
+
+    carts ||--o{ cart_items : "1:N (id_cart)"
+    carts }o--o| discounts : "N:1 cupón ORDER (id_discount)"
+
+    discounts }o--o{ products : "N:M (discount_products)"
+    discounts }o--o{ categories : "N:M (discount_categories)"
+
+    orders ||--o{ order_items : "1:N (id_order)"
+    orders ||--|| receipts : "1:1 (id_order)"
+    orders }o--o| discounts : "N:1 cupón congelado (id_discount)"
+    orders ||--o{ notifications : "1:N opcional (id_order)"

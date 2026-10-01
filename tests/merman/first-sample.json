@@ -1,0 +1,412 @@
+{
+  "pin": "580e39b69cc1b0ca35c4f8272683e622b2e9b8db",
+  "binary_sha256": "a03bd4df441cc947b67d181656b481a3c3232498c3b67b2e54f20e4c92303281",
+  "fixture_sha256": "9adc985a76d4835fd03ffdaf00e051decf2ec0278be3b956329a6975a5ee860b",
+  "semantic_checks": "14 entities / 20 exact relationships; boundary cardinalities, roles, types, attributes",
+  "timing_scope": "fresh process wall time and per-process wait4 peak RSS; repeats are warm filesystem, not persistent-worker renders",
+  "records": [
+    {
+      "name": "version",
+      "command": [
+        "--version"
+      ],
+      "exit": 0,
+      "elapsed_ms": 14.190293999490677,
+      "peak_rss_kib": 21852
+    },
+    {
+      "name": "capabilities",
+      "command": [
+        "capabilities",
+        "--json"
+      ],
+      "exit": 0,
+      "elapsed_ms": 8.591472998887184,
+      "peak_rss_kib": 22172
+    },
+    {
+      "name": "reference-parse",
+      "command": [
+        "parse",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--pretty"
+      ],
+      "exit": 0,
+      "elapsed_ms": 19.814462000795174,
+      "peak_rss_kib": 22172
+    },
+    {
+      "name": "reference-default-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-default-320.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "320",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 276.1324679995596,
+      "peak_rss_kib": 27816,
+      "width": 320,
+      "height": 286,
+      "sha256": "8561ad1f1b958a4b7896e3295ab14d4187255c138769df2163e499af0a0be155"
+    },
+    {
+      "name": "reference-default-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-default-672.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "672",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 353.4286699996301,
+      "peak_rss_kib": 27808,
+      "width": 672,
+      "height": 600,
+      "sha256": "e35447b99c0243ce902e3cb4878ef967b35226e060c58b7ffad9d0b5f2081596"
+    },
+    {
+      "name": "reference-dark-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-dark-320.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "320",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 286.20539300027303,
+      "peak_rss_kib": 27996,
+      "width": 320,
+      "height": 286,
+      "sha256": "94bb10aad63acf203ef43c477b38962eebce960504a1e61d0384360c082a9af2"
+    },
+    {
+      "name": "reference-dark-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference-dark-672.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "672",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 167.63795400038362,
+      "peak_rss_kib": 27800,
+      "width": 672,
+      "height": 600,
+      "sha256": "3b09e1ccb4fe27d5bd7c92ac68fd268a1306ffc8569bcf6ce57a6f5557e6862a"
+    },
+    {
+      "name": "reference-svg",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/reference.svg",
+        "--svg-pipeline",
+        "resvg-safe",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 36.155424000753555,
+      "peak_rss_kib": 22356
+    },
+    {
+      "name": "boundary-parse",
+      "command": [
+        "parse",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--pretty"
+      ],
+      "exit": 0,
+      "elapsed_ms": 6.920582000020659,
+      "peak_rss_kib": 22356
+    },
+    {
+      "name": "boundary-default-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-default-320.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "320",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 174.72867399919778,
+      "peak_rss_kib": 27364,
+      "width": 320,
+      "height": 123,
+      "sha256": "b7cf2d8eb003f57a0b6b81d1caf4ae0331a36a6f7f01560d718cd128a1c05205"
+    },
+    {
+      "name": "boundary-default-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-default-672.png",
+        "--theme",
+        "default",
+        "--raster-fit-width",
+        "672",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 152.55023700046877,
+      "peak_rss_kib": 27636,
+      "width": 672,
+      "height": 259,
+      "sha256": "5920bbc17ceb40a057dda9944b22eaf164abbd88c8d4e7c2dd3ab6320f485d40"
+    },
+    {
+      "name": "boundary-dark-320",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-dark-320.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "320",
+        "--raster-max-width",
+        "320",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "1310720",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 131.46527800017793,
+      "peak_rss_kib": 27732,
+      "width": 320,
+      "height": 123,
+      "sha256": "664b282055dbf89b03642af74aa906ca5201a31795bc82f95a5099bc0096cac3"
+    },
+    {
+      "name": "boundary-dark-672",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary-dark-672.png",
+        "--theme",
+        "dark",
+        "--raster-fit-width",
+        "672",
+        "--raster-max-width",
+        "672",
+        "--raster-max-height",
+        "4096",
+        "--raster-max-pixels",
+        "2752512",
+        "--resource-profile",
+        "interactive",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 125.0138830000651,
+      "peak_rss_kib": 27744,
+      "width": 672,
+      "height": 259,
+      "sha256": "39db1c6abe9346b3577a0509a92b6c2ca85fefd5f27a79885920466575215b2a"
+    },
+    {
+      "name": "boundary-svg",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/boundary.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/boundary.svg",
+        "--svg-pipeline",
+        "resvg-safe",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 30.691784000737243,
+      "peak_rss_kib": 22356
+    },
+    {
+      "name": "repeat-0",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-0.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 251.7480879996583,
+      "peak_rss_kib": 27648
+    },
+    {
+      "name": "repeat-1",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-1.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 190.5423799998971,
+      "peak_rss_kib": 27324
+    },
+    {
+      "name": "repeat-2",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/repeat-2.png",
+        "--raster-fit-width",
+        "672",
+        "--operation-timeout-ms",
+        "5000"
+      ],
+      "exit": 0,
+      "elapsed_ms": 182.16064000080223,
+      "peak_rss_kib": 27444
+    },
+    {
+      "name": "incomplete",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/incomplete.mmd",
+        "--format",
+        "png",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/incomplete.png"
+      ],
+      "exit": 1,
+      "elapsed_ms": 9.213134999299655,
+      "peak_rss_kib": 22356
+    },
+    {
+      "name": "source-budget",
+      "command": [
+        "render",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/tests/merman/reference.mmd",
+        "--output",
+        "/home/agus-hy/Documentos/mdview-nvim-lite/build/merman-evaluation/results/budget.svg",
+        "--resource-limit",
+        "max_source_bytes=16"
+      ],
+      "exit": 1,
+      "elapsed_ms": 3.64616200022283,
+      "peak_rss_kib": 22356
+    }
+  ]
+}
