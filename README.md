@@ -190,6 +190,18 @@ Markdown images keep their existing loader and format behavior. See the
 [HTML policy and image limits](docs/configuration.md#closed-html-subset) and
 [development evidence](docs/development.md#closed-html-subset).
 
+## Interactive details
+
+Sanitized `<details>` and `<summary>` blocks are supported by default when HTML is enabled.
+They open by default and can be toggled interactively in both reader and split modes:
+
+- **Mouse:** Click anywhere on a visible details header in the preview pane to fold or unfold it.
+- **Reader keys:** `]d` / `[d` select the next or previous details header with a visible raster highlight; `za` toggles the selected block.
+- **Split command:** `:MdViewToggleDetail` toggles the innermost details block containing the source cursor. No mappings are installed in the source buffer.
+
+Fold state is session-local and does not modify the source file. Unchanged blocks preserve their state across edits, width changes, and palette reloads. See [interactive details configuration](docs/configuration.md#interactive-details).
+
+
 ## Mermaid diagrams (optional)
 
 Mermaid fences remain literal code blocks unless explicitly enabled. The optional
