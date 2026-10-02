@@ -47,12 +47,13 @@ nvim --headless -u NONE -l tests/mermaid.lua
 
 - `smoke.sh` checks CLI orchestration with a **fake cmark-gfm**, not native pixels.
 - `plugin.lua` exercises the native worker/controller with mocked image display
-  and cell sizes: plain/attributed PNG parity, tables/lists/entities/code/local
-  images, UTF-8/repeated-token positions, actual Neovim wrapped-row scrolling,
-  unsaved edits, resize, raw HTML recovery, overlapping events, bounded frames
-  beyond Cairo's full-image height limit, the README, close/reopen and cleanup.
-  It also checks continuous wheel/arrow input, intermediate publications and final
-  convergence, initial placement, fluid overrides and fallback behavior.
+  and cell sizes: plain/attributed PNG parity, tables/lists/entities/code, Markdown
+  and HTML local images, UTF-8/repeated-token positions, wrapped-row scrolling,
+  unsaved edits, resize, the default-enabled HTML subset and `html=false` recovery,
+  overlapping events, bounded frames beyond Cairo's full-image height limit, the
+  README, close/reopen and cleanup. It also checks continuous wheel/arrow input,
+  intermediate publications, final convergence, initial placement, fluid overrides
+  and fallback behavior.
 - `theme.lua` checks native pixels/geometry, adaptive contrast, highlight fallback,
   custom CSS precedence and coalesced theme/edit/resize reloads.
 - `cursor.lua` checks focus, command-line, colorscheme and close restoration,
@@ -68,6 +69,52 @@ nvim --headless -u NONE -l tests/mermaid.lua
 These checks do **not** prove Kitty composition, physical touchpad smoothness or
 support for arbitrary Markdown. Run `tests/plugin.lua` and `tests/smoke.sh` before
 committing; run additional checks for affected features.
+
+## Closed HTML subset
+
+The production worker enables a closed, sanitized HTML allowlist by default:
+`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments and local
+`img src`/`alt`. Supplied attributes are discarded other than image `src` and
+`alt`; `span` is unwrapped. Unsupported or malformed fragments are escaped as
+literal source with line/column diagnostics, not passed through as raw HTML and
+not allowed to abort unrelated content. `setup({html=false})` opts back into
+explicit raw-HTML rejection.
+
+Implementation is in `src/html_subset.hpp` and `src/html_images.hpp`, integrated
+into `src/preview.cpp`; `lua/mdview/init.lua` sends the opt-out over the existing
+worker protocol. The image helper applies only to sanitized HTML `<img>` elements.
+Markdown images continue using the existing `OcticonContainer` loader and do not
+inherit the narrower HTML formats or budgets.
+
+HTML-local images accept PNG, JPEG, static GIF, BMP and static WebP where
+GdkPixbuf supports them. Paths are local and resolve relative to the source file.
+SVG, animation, remote/file/data URLs, query/fragment suffixes, malformed escapes,
+and additional formats are rejected to literal fallback. Decoder policy limits
+are 8192 px per axis, 16 Mi pixels per image, 64 MiB per regular encoded file and
+32 Mi retained pixels per layout. These conservative limits are not decoder
+sandbox guarantees and do not bound all process memory.
+
+Permanent production coverage is in `tests/plugin.lua`: default subset rendering
+and literal fallback, the `html=0` worker rejection path, normal Markdown-image
+parity, plus the existing edits/recovery, alerts and Mermaid lifecycle coverage.
+Run the complete native verification commands above after rebuilding the normal
+worker. `tests/html/` retains the isolated research fixtures and observations; its
+separate generated worker is not the production path and must not be used to
+replace production regressions.
+
+The remote `<img>` fallback inside a raw `<p>` now attributes visible literal
+text to that paragraph's label rather than the document root. `tests/plugin.lua`
+exercises the reported centered-banner shape, its line-2 anchor and following
+heading; the original remote image remains unavailable and is not fetched.
+`tests/mermaid.lua` covers a supported ER fence beside a literal unsupported
+flowchart, subsequent text, and an independently failing malformed ER diagram.
+
+Excluded scope includes arbitrary HTML, SVG local images, image width/height
+attributes, HTML tables, `details`/`summary`, `picture`/`source`, links and remote
+resources. The policy and evidence distinction are recorded in
+[`pre-release.md`](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
+
+
 
 ## Manual Kitty checks
 
@@ -309,7 +356,7 @@ in the report rather than being duplicated here.
 | Raw/layers inactive | Check explicit setup overrides and SSH/tmux/Kitty identification; a PNG fallback is not arbitrary-terminal support. |
 | Popup drawn behind the raster | Enable zbelow separately from fluid; inspect background/opacity detection warnings. Palette-only probes disable layers. |
 | Visible block cursor over preview | Enable Neovim `termguicolors` if desired; it is not forced by the plugin. |
-| Raw HTML error | Remove unsupported tags/comments; correction should restore the preview. |
+| HTML preview error | `html=false` rejects raw HTML; re-enable the closed subset or remove the tag. With HTML enabled, unsupported tags appear as escaped text and diagnostics go to worker stderr. |
 | Mermaid failure | Check executable path, compiled diagram family, syntax/opening source line and resource limits. |
 | Split stays on previous graph | Distinguish viewport following from cursor following; use `split_follow="cursor"` for active-content reveal. |
 

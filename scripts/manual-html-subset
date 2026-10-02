@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+mode=${1:-split}
+case "$mode" in replace|split) ;; *) echo 'Usage: manual-html-subset [replace|split] [document.md]' >&2; exit 2;; esac
+if [[ -n ${SSH_CLIENT-}${SSH_TTY-}${SSH_CONNECTION-}${TMUX-} || ( ${TERM-} != xterm-kitty && -z ${KITTY_WINDOW_ID-} ) ]]; then
+  echo 'Run inside local Kitty, outside SSH/tmux.' >&2; exit 1
+fi
+[[ -x $root/build/html-subset/mdview-preview ]] || { echo "Build explicitly: bash '$root/scripts/build-html-subset'" >&2; exit 1; }
+if [[ -n ${2-} ]]; then
+  document=$2
+else
+  fixture=$(mktemp -d /tmp/mdview-html-subset.XXXXXX)
+  trap 'rm -rf -- "$fixture"' EXIT
+  cp -- "$root/tests/html/manual.md" "$fixture/document.md"
+  cp -R -- "$root/tests/html/assets" "$fixture/assets"
+  document=$fixture/document.md
+fi
+[[ -f $document ]] || { echo "Missing document: $document" >&2; exit 1; }
+export MDVIEW_MANUAL_ROOT=$root MDVIEW_MANUAL_MODE=$mode
+nvim "$document" -c 'lua vim.opt.runtimepath:prepend(vim.env.MDVIEW_MANUAL_ROOT); package.loaded["mdview"]=nil; require("mdview").setup({renderer=vim.env.MDVIEW_MANUAL_ROOT.."/build/html-subset/mdview-preview",alerts=true,mermaid=false,theme="dark",raw=false,smooth=false,zbelow=false,clamp=false,split_follow="viewport"}); require("mdview").open(vim.env.MDVIEW_MANUAL_MODE)'

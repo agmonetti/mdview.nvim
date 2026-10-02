@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <cstdlib>
 #include <cmark-gfm.h>
 #include <cmark-gfm-core-extensions.h>
 #include <litehtml/render_item.h>
@@ -20,7 +21,24 @@ using Clock = std::chrono::steady_clock;
 struct Position { int line, column; };
 struct Label { std::string text; std::vector<Position> positions; };
 struct Fragment { int line, column, end; double y; double block_bottom = 0; double bottom = 0; };
+static std::vector<std::pair<Position, Position>> html_comments;
+static int html_root_label = -1;
 static const Fragment* source_fragment(const std::vector<Fragment>& fragments, int line, int col) {
+    auto less = [](Position a, Position b) { return a.line < b.line || (a.line == b.line && a.column < b.column); };
+    const Position query{line, col};
+    for (const auto& range : html_comments) {
+        if (less(query, range.first) || less(range.second, query)) continue;
+        const Fragment *next = nullptr, *previous = nullptr;
+        for (const auto& fragment : fragments) {
+            const Position position{fragment.line, fragment.column};
+            if (less(range.second, position)) {
+                if (!next || less(position, {next->line, next->column})) next = &fragment;
+            } else if (less(position, range.first)) {
+                if (!previous || less({previous->line, previous->column}, position)) previous = &fragment;
+            }
+        }
+        return next ? next : previous;
+    }
     const Fragment *selected=nullptr, *preceding=nullptr, *following=nullptr;
     for (const auto& f : fragments) {
         if (f.line < line && (!preceding || f.line > preceding->line || (f.line == preceding->line && f.y > preceding->y))) preceding = &f;
@@ -66,6 +84,7 @@ static double elapsed(Clock::time_point t) {
     return std::chrono::duration<double, std::milli>(Clock::now()-t).count();
 }
 #include "mermaid.hpp"
+#include "html_images.hpp"
 
 class Markdown {
     std::vector<std::string> lines;
@@ -81,7 +100,7 @@ class Markdown {
         cmark_node_free(node);
         return out;
     }
-    Label label(cmark_node* node, const std::string& text, bool code = false) {
+    Label original_label(cmark_node* node, const std::string& text, bool code = false) {
         Label result{text, {}};
         int start = cmark_node_get_start_line(node), end = cmark_node_get_end_line(node);
         std::string raw;
@@ -134,6 +153,7 @@ class Markdown {
         labels.push_back(std::move(value));
         return prefix + "<span data-mdview=\"" + std::to_string(id) + "\">" + text + "</span>" + suffix;
     }
+    #include "html_subset.hpp"
     struct Alert {
         int first, last, column, paragraph_last;
         const char* type;
@@ -285,7 +305,7 @@ class Markdown {
                     const auto id = labels.size();
                     labels.push_back(label(node, text, true));
                     html = "<code data-mdview=\"" + std::to_string(id) + "\">" + escape(text) + "</code>";
-                } else html = span(label(node, text));
+                } else html = html_bare_text.count(node) ? escape(text) : span(label(node, text));
                 auto replacement = cmark_node_new(CMARK_NODE_HTML_INLINE);
                 cmark_node_set_literal(replacement, html.c_str());
                 if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot label inline node"); }
@@ -298,15 +318,17 @@ class Markdown {
                 if (fenced && language == "mermaid" && mermaid && mermaid->enabled()) {
                     const int first = cmark_node_get_start_line(node), last = cmark_node_get_end_line(node);
                     auto png = mermaid->render(cmark_node_get_literal(node), first);
-                    auto html = "<p><img data-mdview-mermaid=\"" + std::to_string(first)
-                        + "\" data-mdview-mermaid-end=\"" + std::to_string(last)
-                        + "\" src=\"" + escape(png) + "\" alt=\"Mermaid diagram\" style=\"max-width:100%;height:auto\"></p>\n";
-                    auto replacement = cmark_node_new(CMARK_NODE_HTML_BLOCK);
-                    cmark_node_set_literal(replacement, html.c_str());
-                    if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot insert Mermaid diagram"); }
-                    cmark_node_free(node);
-                    node = next;
-                    continue;
+                    if (png) {
+                        auto html = "<p><img data-mdview-mermaid=\"" + std::to_string(first)
+                            + "\" data-mdview-mermaid-end=\"" + std::to_string(last)
+                            + "\" src=\"" + escape(*png) + "\" alt=\"Mermaid diagram\" style=\"max-width:100%;height:auto\"></p>\n";
+                        auto replacement = cmark_node_new(CMARK_NODE_HTML_BLOCK);
+                        cmark_node_set_literal(replacement, html.c_str());
+                        if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot insert Mermaid diagram"); }
+                        cmark_node_free(node);
+                        node = next;
+                        continue;
+                    }
                 }
                 int n = cmark_node_get_start_line(node) + (fenced ? 1 : 0);
                 std::istringstream code(cmark_node_get_literal(node));
@@ -343,8 +365,8 @@ class Markdown {
         }
     }
 public:
-    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false) {
-        lines.clear(); labels.clear(); mermaid = renderer;
+    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false, bool html_enabled = true) {
+        lines.clear(); labels.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
         cmark_gfm_core_extensions_ensure_registered();
@@ -358,10 +380,8 @@ public:
         auto parser = parse(source);
         auto root = cmark_parser_finish(parser);
         try {
+            if (!html_enabled) reject_html(root);
             if (alerts) {
-                // Only custom nodes are trusted. In plain inspection mode there
-                // is no instrumentation pass to reject user-authored raw HTML.
-                reject_html(root);
                 const auto found = find_alerts(root);
                 std::string protected_source;
                 size_t offset = 0;
@@ -383,19 +403,34 @@ public:
                 }
                 render_alerts(root, found, marked);
             }
+            if (html_enabled) sanitize_html(root, marked);
             if (marked) instrument(root);
             std::unique_ptr<char, decltype(&std::free)> rendered(cmark_render_html(root, CMARK_OPT_UNSAFE, cmark_parser_get_syntax_extensions(parser)), &std::free);
-            std::string html(rendered.get());
+            std::string html = html_annotate(rendered.get());
             cmark_node_free(root); cmark_parser_free(parser);
             return html;
         } catch (...) { cmark_node_free(root); cmark_parser_free(parser); throw; }
     }
     void collect(const std::shared_ptr<litehtml::render_item>& node, int id, std::map<int,size_t>& offsets, std::vector<Fragment>& fragments, int image_line = 0) const {
         if (!node->is_visible()) return;
+        if (auto own = node->src_el()->get_attr("data-mdview-break")) {
+            const auto placement = node->get_placement();
+            const int line = std::stoi(own), column = std::stoi(node->src_el()->get_attr("data-mdview-break-column"));
+            fragments.push_back({line, column, column, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+        }
         if (auto own = node->src_el()->get_attr("data-mdview-image")) image_line = std::stoi(own);
         if (image_line && std::string(node->src_el()->get_tagName()) == "img") {
             const auto placement = node->get_placement();
-            fragments.push_back({image_line, 0, 0, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+            const auto column = node->src_el()->get_attr("data-mdview-image-column");
+            const auto end = node->src_el()->get_attr("data-mdview-image-end");
+            const auto end_line = node->src_el()->get_attr("data-mdview-image-end-line");
+            const int last = end_line ? std::stoi(end_line) : image_line;
+            for (int line = image_line; line <= last; ++line) {
+                const int first_column = line == image_line && column ? std::stoi(column) : 0;
+                const int last_column = line == last && end ? std::stoi(end) : 0;
+                fragments.push_back({line, first_column, last_column, placement.y, 0,
+                    static_cast<double>(placement.y + placement.height)});
+            }
         }
         if (auto first = node->src_el()->get_attr("data-mdview-mermaid")) {
             const int start = std::stoi(first), end = std::stoi(node->src_el()->get_attr("data-mdview-mermaid-end"));
@@ -405,6 +440,7 @@ public:
         if (auto own = node->src_el()->get_attr("data-mdview")) id = std::stoi(own);
         if (id >= 0 && node->src_el()->is_text()) {
             litehtml::string text; node->src_el()->get_text(text);
+            if (text.find_first_not_of(" \t\r\n") == std::string::npos) return;
             const auto& value = labels.at(id);
             auto found = value.text.find(text, offsets[id]);
             if (found == std::string::npos) throw std::runtime_error("Render leaf does not match source literal");
@@ -420,7 +456,8 @@ public:
 };
 
 static std::string document_html(const std::string& body, const std::string& css) {
-    return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" + css + "</style></head><body><main class=\"markdown-body\">" + body + "</main></body></html>";
+    const auto metadata = html_root_label < 0 ? std::string() : " data-mdview=\"" + std::to_string(html_root_label) + "\"";
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" + css + "</style></head><body><main class=\"markdown-body\"" + metadata + ">" + body + "</main></body></html>";
 }
 // Do not fetch remote resources. Decode local URLs safely (the upstream adapter assumes valid %xx).
 class Container : public mdview::OcticonContainer {
@@ -429,6 +466,11 @@ public:
     Container(const std::string& base, html2png::converter* converter, const MermaidRenderer* renderer)
         : mdview::OcticonContainer(base, converter), mermaid(renderer) {}
     cairo_surface_t* get_image(const std::string& url) override {
+        const auto html = html_images::context.html_sources.find(url);
+        if (html != html_images::context.html_sources.end()) {
+            auto image = html_images::surface(html->second);
+            return image ? cairo_surface_reference(image) : nullptr;
+        }
         if (url.find("://") != std::string::npos || url.find("data:") != std::string::npos) return nullptr;
         for (size_t i=0; i<url.size(); ++i) if (url[i]=='%') {
             if (i+2 >= url.size() || !std::isxdigit(static_cast<unsigned char>(url[i+1])) || !std::isxdigit(static_cast<unsigned char>(url[i+2]))) return nullptr;
@@ -442,11 +484,18 @@ public:
 int main(int argc, char** argv) {
     std::cout << std::unitbuf;
     Markdown markdown;
-    if ((argc == 5 || (argc == 6 && std::string(argv[5]) == "alerts")) && std::string(argv[1]) == "--html") {
-        try { std::cout << document_html(markdown.convert(read_file(argv[2]), std::string(argv[4]) == "marked", nullptr, argc == 6), read_file(argv[3])); return 0; }
+    if ((argc == 5 || (argc == 6 && (std::string(argv[5]) == "alerts" || std::string(argv[5]) == "html=0"))) && std::string(argv[1]) == "--html") {
+        try {
+            const bool alerts = argc == 6 && std::string(argv[5]) == "alerts";
+            const bool html_enabled = !(argc == 6 && std::string(argv[5]) == "html=0");
+            html_images::configure(std::filesystem::path(argv[2]).parent_path().string(), argv[2]);
+            const auto body = markdown.convert(read_file(argv[2]), std::string(argv[4]) == "marked", nullptr, alerts, html_enabled);
+            std::cout << document_html(body, read_file(argv[3]));
+            return 0;
+        }
         catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
     }
-    if (argc != 1) { std::cerr << "Usage: mdview-preview [--html markdown css plain|marked [alerts]]\n"; return 2; }
+    if (argc != 1) { std::cerr << "Usage: mdview-preview [--html markdown css plain|marked [alerts|html=0]]\n"; return 2; }
     install_mermaid_cleanup();
     MermaidRenderer mermaid;
     std::unique_ptr<html2png::converter> converter;
@@ -461,15 +510,16 @@ int main(int argc, char** argv) {
             if (op == "QUIT") break;
             if (op == "LOAD") {
                 doc.reset(); container.reset(); converter.reset(); fragments.clear(); revision = 0; width = 0;
+                html_images::clear();
                 mermaid.clear();
                 int rev=0, w=0; std::string snapshot, base, css;
                 if (!(input >> rev >> w >> snapshot >> base >> css) || rev < 1 || w < 64 || w > 4096) throw std::runtime_error("Invalid LOAD request");
-                bool alerts = false;
-                std::string executable, diagrams, background, extra;
-                if (input >> executable && executable == "alerts=1") {
-                    alerts = true;
-                    executable.clear();
-                    input >> executable;
+                bool alerts = false, html_enabled = true;
+                std::string executable, option, diagrams, background, extra;
+                while (input >> option) {
+                    if (option == "alerts=1") alerts = true;
+                    else if (option == "html=0") html_enabled = false;
+                    else { executable = option; break; }
                 }
                 if (!executable.empty()) {
                     if (!(input >> diagrams >> background) || input >> extra) throw std::runtime_error("Invalid Mermaid LOAD options");
@@ -479,13 +529,15 @@ int main(int argc, char** argv) {
                     mermaid.configure(unhex(executable), unhex(diagrams), unhex(background), w);
                 }
                 auto t = Clock::now();
-                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts);
+                html_images::configure(unhex(base), unhex(snapshot));
+                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts, html_enabled);
                 auto html = document_html(body, read_file(unhex(css)));
                 converter = std::make_unique<html2png::converter>(w, 800, 96.0, "sans-serif");
                 container = std::make_unique<Container>(unhex(base), converter.get(), &mermaid);
                 doc = litehtml::document::createFromString(html, container.get());
                 if (!doc) throw std::runtime_error("Cannot create layout");
                 doc->render(w);
+                html_images::context.decoding = false;
                 std::map<int,size_t> offsets;
                 markdown.collect(doc->root_render(), -1, offsets, fragments);
                 revision = rev; width = w;
@@ -591,6 +643,7 @@ int main(int argc, char** argv) {
             } else throw std::runtime_error("Unknown request");
         } catch (const std::exception& e) {
             doc.reset(); container.reset(); converter.reset(); fragments.clear(); revision = 0; width = 0;
+            html_images::clear();
             mermaid.clear();
             std::cout << "ERROR " << hex(e.what()) << '\n';
         }

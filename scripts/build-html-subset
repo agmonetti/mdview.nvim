@@ -1,0 +1,7 @@
+#!/bin/sh
+# Experimental closed HTML subset only; never changes the normal build or fetches dependencies.
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+python3 "$root/tests/html/generate.py" "$root/build/html-subset"
+cmake -S "$root/build/html-subset" -B "$root/build/html-subset" -DCMAKE_BUILD_TYPE=Release
+cmake --build "$root/build/html-subset" --target mdview-preview --parallel "${MDVIEW_BUILD_JOBS:-2}"

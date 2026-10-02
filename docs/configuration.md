@@ -26,6 +26,7 @@ No option installs packages or builds a renderer.
 | `zbelow` | Off unless requested by environment | Request local raw transport and lower-layer placement; explicit `false` overrides the environment. |
 | `alerts` | Literal quote markers | `true` renders the five GitHub alert types; `false` disables the transformation. See [GitHub alerts](#github-alerts). |
 | `mermaid` | Literal code fences | `true` uses the bundled renderer; `false` disables diagrams; `{renderer="/absolute/path/to/merman-cli"}` selects a custom executable. See [Mermaid](#mermaid). |
+| `html` | `true` | Enable the closed, sanitized HTML subset. `false` restores explicit rejection of raw HTML. |
 
 Explicit setup values override preset values and matching environment controls.
 `clamp=false` only disables the configured clamp when smoothing and the P3/C
@@ -123,13 +124,39 @@ lists or other quotes remain ordinary Markdown.
 
 The generated title maps to the marker line; body text retains its own source
 anchors, rather than pinning the entire alert to the title. Supported Markdown
-formatting in the body is preserved. Raw HTML and unsupported source attribution
-still fail explicitly; this feature does not broaden arbitrary-Markdown support.
+formatting and the closed HTML subset are preserved in alert bodies. See [Closed
+HTML subset](#closed-html-subset) for supported tags and fallback behavior.
 Custom titles, folding and other admonition syntaxes are outside this feature.
 
 A preexisting attribution limitation remains: a bare autolink followed by a
 backslash hard break in a quote can fail with a source-text error. The same
 ordinary quote fails without alerts; two-space hard breaks are regression-covered.
+
+## Closed HTML subset
+
+Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
+closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete
+`<!-- comments -->`, and `<img src="local/path" alt="...">`. Wrappers and text are
+rendered without user attributes; only local image `src` and `alt` are retained.
+`span` is unwrapped. Unsupported/malformed tags, invalid nesting, incomplete
+comments and unusable HTML images are escaped as literal source with localized
+stderr diagnostics, so unrelated document content remains visible. `html=false`
+restores the former document-level raw-HTML error for users who need that policy.
+
+HTML images are local only and accept PNG, JPEG, static GIF, BMP and static WebP
+when the installed decoder supports them. SVG, animation, remote/file/data URLs,
+queries/fragments, malformed escapes and additional formats are rejected. The
+HTML-only decoder enforces 8192 px per axis, 16 Mi pixels per image, 64 MiB per
+regular encoded file and 32 Mi retained image pixels per layout. These conservative
+policy limits do not cap every decoder allocation or constitute a sandbox.
+Markdown images continue through the existing production loader unchanged; the
+HTML-specific allowlist/budgets do not narrow their supported formats or behavior.
+
+Width/height controls, HTML tables, links, `details`/`summary`, `picture`/`source`,
+SVG and remote resources are outside this selection. See the [development
+notes](development.md#closed-html-subset) and the
+[agreed scope](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
+
 
 Stock CSS supplies border/spacing and a 16×16 icon box with `vertical-align: middle`.
 The five SVG shapes are bundled [Primer Octicons](https://github.com/primer/octicons)
@@ -216,8 +243,10 @@ source/float focus and close, preserving newer external guicursor changes.
 Follow the [optional build instructions](../README.md#mermaid-diagrams-optional)
 first. The evaluated pin is Merman `v0.8.0-alpha.7`, commit
 `580e39b69cc1b0ca35c4f8272683e622b2e9b8db`, built with ER, SVG and PNG features.
-Other diagram families require a compatible build; complete official Mermaid
-semantics/visual compatibility is not promised.
+Unsupported diagram families (including flowcharts) remain literal fenced code
+blocks without aborting the rest of the preview. Other diagram families require a
+compatible build; complete official Mermaid semantics/visual compatibility is not
+promised.
 
 Enable with `mermaid = true` in your existing setup call. The executable is
 resolved relative to the plugin checkout, not Neovim's working directory:
@@ -239,9 +268,11 @@ content to the configured executable, without a shell, during **LOAD**. Generate
 PNGs are session-owned; no image export or Markdown source rewriting is required.
 Unsaved edits, width changes and explicit document-theme changes regenerate
 diagrams. Scroll and height-only resize reuse layout. Rapid edits coalesce; old
-frames are not displayed. Failures invalidate the old layout, clear old artifacts
-and identify the block's opening line. Correction recovers in the same worker;
-close stops pending child groups and removes generated files.
+frames are not displayed. Unsupported-family diagnostics from the CLI leave only
+that fence literal; syntax errors in supported diagrams, timeouts, resource limits
+and other failures invalidate the old layout, clear old artifacts and identify the
+block's opening line. Correction recovers in the same worker; close stops pending
+child groups and removes generated files.
 
 Every source line in a diagram maps to the **whole block**, not a rendered entity
 or relationship. Background follows explicit dark/light/nvim themes; luminance

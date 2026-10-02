@@ -1,0 +1,2447 @@
+{
+  "date": "2026-10-02",
+  "scope": "Investigation only; no production HTML policy change. Native outputs, not Kitty/Neovim UI acceptance.",
+  "method": {
+    "fixtures": "Source stored verbatim per case; cmark-gfm --to xml --sourcepos; production --html plain/marked/plain alerts and LOAD; isolated rejection-only bypass LOAD/DRAW; plain stock render versus bypass marked via ImageMagick AE at both widths.",
+    "bypass": "Exactly the two Raw HTML rejection throws in src/preview.cpp replaced with (void)0 in an isolated copy. Existing compile/link commands and adapter objects reused. No raw-block labeling or sanitization added. Not a support implementation.",
+    "mapping": "Following heading FRAG floor(y) compared to actual DRAW top. Pixel parity is independent plain vs marked rendering; not an independent text-leaf/draw coordinate oracle.",
+    "recovery": "One production native worker: valid LOAD/DRAW rev1, raw HTML LOAD/DRAW rev2, corrected escaped HTML LOAD/DRAW rev3, QUIT. Files unchanged; Neovim buffer/controller not exercised here.",
+    "limits": "Small synthetic fixtures at 360/700px, fixed 800px raster; no arbitrary HTML, terminal visual, performance or resource-bound claims. Sup/sub combined fixture; comments and malformed tags included.",
+    "storage": "Successful --html output retains body and full-output SHA256; shared stylesheet/wrapper omitted to avoid duplication. Protocol stdout/stderr retained verbatim."
+  },
+  "hashes": {
+    "src/preview.cpp": "bca130fe3c52eefe3c370eb7d048de0002a0cb3fa23aebcdaeb3d9fc7c25306e",
+    "styles/markdown.css": "608f5d5f0105cf5d47fa4e63b7ec9b71bb44e4f1bde07164f8412ae5963aa819",
+    "build/mdview-preview": "c67d55d8c997e11243c2004df80f4d0298f8d14dc2a04f8b565475b584716a36",
+    "build/mdview-render": "874515aff4c8ab7b87fe8d76502787ec8460aee5e6302bf86e11c68b1bb19008"
+  },
+  "cmark_version": {
+    "exit": 0,
+    "stdout": "cmark-gfm 0.29.0.gfm.13 - CommonMark with GitHub Flavored Markdown converter\n(C) 2014-2016 John MacFarlane\n",
+    "stderr": ""
+  },
+  "cases": [
+    {
+      "case": "br-inline",
+      "source": "# Before sentinel\n\nAntes<br>Después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:5",
+          "literal": "Antes"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:6-3:9",
+          "literal": "<br>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:10-3:17",
+          "literal": "Después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "d4a7ca14629986bee6d5dd365259740fa993c1d4edd5ddbd3261cf58dfa7f99b",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes<br>Después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 9 16 104.5\nFRAG 5 2 6 179.8\nFRAG 5 8 15 179.8\nFRAG 7 0 4 253.1\nFRAG 7 6 10 253.1\nREADY 1 360 298 91.9607\nFRAME 1 1 0 0 0 360 800 69.2698\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 9 16 104.5\nFRAG 5 2 6 179.8\nFRAG 5 8 15 179.8\nFRAG 7 0 4 253.1\nFRAG 7 6 10 253.1\nREADY 1 700 298 69.8623\nFRAME 1 1 0 0 0 700 800 88.8539\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "br-block",
+      "source": "# Before sentinel\n\n<br>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:4",
+          "literal": "<br>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "961c8a6cc115b779dba1a04b3bd59edd63cf9f2312410b231dc960666c7f3489",
+          "body_html": "<h1>Before sentinel</h1>\n<br>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 360 249.2 29.5571\nFRAME 1 1 0 0 0 360 800 58.8911\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 700 249.2 65.8381\nFRAME 1 1 0 0 0 700 800 92.5338\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "kbd",
+      "source": "# Before sentinel\n\nAntes <kbd>Ctrl</kbd> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:11",
+          "literal": "<kbd>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:12-3:15",
+          "literal": "Ctrl"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:16-3:21",
+          "literal": "</kbd>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:22-3:30",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "f7bd5abdc144ecf7f65112d5d799913461b70f1d50c2a57a156e4cd92b34396d",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <kbd>Ctrl</kbd> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 11 14 75.7\nFRAG 3 22 29 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 74.3895\nFRAME 1 1 0 0 0 360 800 67.7956\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 11 14 75.7\nFRAG 3 22 29 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 77.1005\nFRAME 1 1 0 0 0 700 800 85.7758\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "sup-sub",
+      "source": "# Before sentinel\n\nAntes X<sup>2</sup> H<sub>2</sub>O después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:7",
+          "literal": "Antes X"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:8-3:12",
+          "literal": "<sup>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:13-3:13",
+          "literal": "2"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:14-3:19",
+          "literal": "</sup>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:20-3:21",
+          "literal": " H"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:22-3:26",
+          "literal": "<sub>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:27-3:27",
+          "literal": "2"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:28-3:33",
+          "literal": "</sub>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:34-3:43",
+          "literal": "O después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "a223111a2b8a765803da1d99b5b8e9ff136c91ed91da84ad30e4fbbed834fd8b",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes X<sup>2</sup> H<sub>2</sub>O después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.4\nFRAG 3 6 6 75.4\nFRAG 3 12 12 72.4\nFRAG 3 20 20 75.4\nFRAG 3 26 26 82\nFRAG 3 33 33 75.4\nFRAG 3 35 42 75.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 65.4762\nFRAME 1 1 0 0 0 360 800 65.4595\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.4\nFRAG 3 6 6 75.4\nFRAG 3 12 12 72.4\nFRAG 3 20 20 75.4\nFRAG 3 26 26 82\nFRAG 3 33 33 75.4\nFRAG 3 35 42 75.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 67.5659\nFRAME 1 1 0 0 0 700 800 90.1382\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "span",
+      "source": "# Before sentinel\n\nAntes <span>énfasis &amp; texto</span> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:12",
+          "literal": "<span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:13-3:32",
+          "literal": "énfasis & texto"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:33-3:39",
+          "literal": "</span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:40-3:48",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "5cf7676d7d6a80d08929542f77ca89541b740cd8d90e38723d123158ce4f36e0",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <span>énfasis &amp; texto</span> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 12 19 75.7\nFRAG 3 21 21 75.7\nFRAG 3 27 31 75.7\nFRAG 3 40 47 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 66.2979\nFRAME 1 1 0 0 0 360 800 70.0567\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 12 19 75.7\nFRAG 3 21 21 75.7\nFRAG 3 27 31 75.7\nFRAG 3 40 47 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 63.5354\nFRAME 1 1 0 0 0 700 800 85.4687\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "p-block",
+      "source": "# Before sentinel\n\n<p>Texto **literal** &amp; final</p>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:36",
+          "literal": "<p>Texto **literal** &amp; final</p>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "653edf6b93e2dcce6731e220a3bde7590e6e925eb79bbdbf2c5a280003809a12",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Texto **literal** &amp; final</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 71.9677\nFRAME 1 1 0 0 0 360 800 52.6364\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 62.0563\nFRAME 1 1 0 0 0 700 800 86.7791\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "div-block",
+      "source": "# Before sentinel\n\n<div>Texto **literal** &amp; final</div>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:40",
+          "literal": "<div>Texto **literal** &amp; final</div>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "58ac8484331dc5cdd74bf8b570114e8b8d98bf317a794c63b8cb7be83862c8c6",
+          "body_html": "<h1>Before sentinel</h1>\n<div>Texto **literal** &amp; final</div>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 360 249.2 62.8991\nFRAME 1 1 0 0 0 360 800 66.5367\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 700 249.2 47.4791\nFRAME 1 1 0 0 0 700 800 59.6706\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "div-multiline",
+      "source": "# Before sentinel\n\n<div>\nTexto **literal**\nsegunda línea\n</div>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-6:6",
+          "literal": "<div>\nTexto **literal**\nsegunda línea\n</div>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "8:3-8:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "10:1-10:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "f9e199c5e74402882b3f4a80f893fd8d423201895476fb839d24ec7bd228b742",
+          "body_html": "<h1>Before sentinel</h1>\n<div>\nTexto **literal**\nsegunda línea\n</div>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 8 2 6 131\nFRAG 8 8 15 131\nFRAG 10 0 4 204.3\nFRAG 10 6 10 204.3\nREADY 1 360 249.2 28.2171\nFRAME 1 1 0 0 0 360 800 47.495\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 8 2 6 131\nFRAG 8 8 15 131\nFRAG 10 0 4 204.3\nFRAG 10 6 10 204.3\nREADY 1 700 249.2 72.9343\nFRAME 1 1 0 0 0 700 800 94.1135\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "div-blank",
+      "source": "# Before sentinel\n\n<div>\n\nTexto **Markdown**\n\n</div>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:5",
+          "literal": "<div>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:1-5:6",
+          "literal": "Texto "
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:9-5:16",
+          "literal": "Markdown"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "7:1-7:6",
+          "literal": "</div>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "9:3-9:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "11:1-11:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "ef2348d070bf84ddcd4a5b13febd5636e225fd98e188ee34860f872ca46e6ff8",
+          "body_html": "<h1>Before sentinel</h1>\n<div>\n<p>Texto <strong>Markdown</strong></p>\n</div>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 0 4 75.7\nFRAG 5 8 15 75.7\nFRAG 9 2 6 151\nFRAG 9 8 15 151\nFRAG 11 0 4 224.3\nFRAG 11 6 10 224.3\nREADY 1 360 269.2 64.3282\nFRAME 1 1 0 0 0 360 800 68.2222\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 0 4 75.7\nFRAG 5 8 15 75.7\nFRAG 9 2 6 151\nFRAG 9 8 15 151\nFRAG 11 0 4 224.3\nFRAG 11 6 10 224.3\nREADY 1 700 269.2 77.5547\nFRAME 1 1 0 0 0 700 800 87.2161\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "comment-inline",
+      "source": "# Before sentinel\n\nAntes<!-- oculto -->Después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:5",
+          "literal": "Antes"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:6-3:20",
+          "literal": "<!-- oculto -->"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:21-3:28",
+          "literal": "Después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "3316e9c59d63486ca3f7f505a97ab86a8ce020f3aaa2039273575c9f681a15f0",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes<!-- oculto -->Después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 20 27 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 70.4493\nFRAME 1 1 0 0 0 360 800 64.1859\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 20 27 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 72.0933\nFRAME 1 1 0 0 0 700 800 80.2021\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "comment-block",
+      "source": "# Before sentinel\n\n<!-- oculto\notra línea -->\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:11",
+          "literal": "<!-- oculto\notra línea -->\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "6:3-6:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "8:1-8:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "df0d49faf0a3b658c597c3ecfc1b149d3b561fc02b1c09d77511a27461ee0fbd",
+          "body_html": "<h1>Before sentinel</h1>\n<!-- oculto\notra línea -->\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 6 2 6 102.2\nFRAG 6 8 15 102.2\nFRAG 8 0 4 175.5\nFRAG 8 6 10 175.5\nREADY 1 360 220.4 71.5581\nFRAME 1 1 0 0 0 360 800 67.6561\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 6 2 6 102.2\nFRAG 6 8 15 102.2\nFRAG 8 0 4 175.5\nFRAG 8 6 10 175.5\nREADY 1 700 220.4 66.5721\nFRAME 1 1 0 0 0 700 800 84.3217\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "comment-unclosed",
+      "source": "# Before sentinel\n\n<!-- sin cierre\nTexto atrapado\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-8:11",
+          "literal": "<!-- sin cierre\nTexto atrapado\n\n# After sentinel\n\nAfter body.\n"
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "e4fe1f83b98462a05c1bd4de0566ac19db9d4ac3d534582f469955757360ad10",
+          "body_html": "<h1>Before sentinel</h1>\n<!-- sin cierre\nTexto atrapado\n\n# After sentinel\n\nAfter body.\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nREADY 1 360 71.8 62.835\nFRAME 1 1 0 0 0 360 800 59.7053\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nREADY 1 700 71.8 63.4228\nFRAME 1 1 0 0 0 700 800 80.5183\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "kbd-unclosed",
+      "source": "# Before sentinel\n\nAntes <kbd>sin cierre\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:11",
+          "literal": "<kbd>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:12-3:21",
+          "literal": "sin cierre"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "035119cbc52c07ba3fd3ce213dc30686142b959efc19d780f50660c147f05355",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <kbd>sin cierre</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 11 13 75.7\nFRAG 3 15 20 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 33.8193\nFRAME 1 1 0 0 0 360 800 30.7762\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 11 13 75.7\nFRAG 3 15 20 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 80.1701\nFRAME 1 1 0 0 0 700 800 79.2199\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "span-multiline",
+      "source": "# Before sentinel\n\nAntes <span>uno\ndos</span> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:12",
+          "literal": "<span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:13-3:15",
+          "literal": "uno"
+        },
+        {
+          "type": "text",
+          "sourcepos": "4:1-4:3",
+          "literal": "dos"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "4:4-4:10",
+          "literal": "</span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "4:11-4:19",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "6:3-6:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "8:1-8:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "87a2facb8b56124d5a57694e4c328acf66c30cf55a38016506748c16ef087a89",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <span>uno\ndos</span> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 12 14 75.7\nFRAG 4 0 2 75.7\nFRAG 4 11 18 75.7\nFRAG 6 2 6 151\nFRAG 6 8 15 151\nFRAG 8 0 4 224.3\nFRAG 8 6 10 224.3\nREADY 1 360 269.2 26.7327\nFRAME 1 1 0 0 0 360 800 26.4281\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 12 14 75.7\nFRAG 4 0 2 75.7\nFRAG 4 11 18 75.7\nFRAG 6 2 6 151\nFRAG 6 8 15 151\nFRAG 8 0 4 224.3\nFRAG 8 6 10 224.3\nREADY 1 700 269.2 27.0236\nFRAME 1 1 0 0 0 700 800 33.3704\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "attributes",
+      "source": "# Before sentinel\n\nAntes <span style=\"color:red\" onclick=\"bad()\" data-mdview=\"999\">texto</span> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:64",
+          "literal": "<span style=\"color:red\" onclick=\"bad()\" data-mdview=\"999\">"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:65-3:69",
+          "literal": "texto"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:70-3:76",
+          "literal": "</span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:77-3:85",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "70e6020eb23cf581859ed245e5bf04fcd3a6cdcd63a62f5454d8b11e01867dae",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <span style=\"color:red\" onclick=\"bad()\" data-mdview=\"999\">texto</span> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 64 68 75.7\nFRAG 3 77 84 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 28.0775\nFRAME 1 1 0 0 0 360 800 25.8242\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 64 68 75.7\nFRAG 3 77 84 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 27.4468\nFRAME 1 1 0 0 0 700 800 35.1687\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "align-size",
+      "source": "# Before sentinel\n\n<div align=\"center\" width=\"9999\" height=\"9999\">Texto</div>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:58",
+          "literal": "<div align=\"center\" width=\"9999\" height=\"9999\">Texto</div>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "a3ff25a41bd019344728768cb9730dc43c571a4f80d8684fb76a020ed76a72c0",
+          "body_html": "<h1>Before sentinel</h1>\n<div align=\"center\" width=\"9999\" height=\"9999\">Texto</div>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 360 249.2 29.7583\nFRAME 1 1 0 0 0 360 800 29.6036\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 700 249.2 72.752\nFRAME 1 1 0 0 0 700 800 73.5266\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "foreign-metadata",
+      "source": "# Before sentinel\n\nAntes <span data-mdview=\"999\">texto</span> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:30",
+          "literal": "<span data-mdview=\"999\">"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:31-3:35",
+          "literal": "texto"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:36-3:42",
+          "literal": "</span>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:43-3:51",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "4a21b0640ed203785a21089d59b62feb257548c1061b2acb8f80a9e2d4e636c4",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <span data-mdview=\"999\">texto</span> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 30 34 75.7\nFRAG 3 43 50 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 66.9601\nFRAME 1 1 0 0 0 360 800 66.1571\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 30 34 75.7\nFRAG 3 43 50 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 77.3718\nFRAME 1 1 0 0 0 700 800 92.2804\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "details",
+      "source": "# Before sentinel\n\n<details>\n<summary>Título</summary>\n\nContenido\n\n</details>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-4:26",
+          "literal": "<details>\n<summary>Título</summary>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "6:1-6:9",
+          "literal": "Contenido"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "8:1-8:10",
+          "literal": "</details>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "10:3-10:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "12:1-12:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "51e6e2db550a863ca10a8b517177f855f3fde6bfdd2cbd9439a89ee46cfbde05",
+          "body_html": "<h1>Before sentinel</h1>\n<details>\n<summary>Título</summary>\n<p>Contenido</p>\n</details>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 6 0 8 104.5\nFRAG 10 2 6 179.8\nFRAG 10 8 15 179.8\nFRAG 12 0 4 253.1\nFRAG 12 6 10 253.1\nREADY 1 360 298 61.5468\nFRAME 1 1 0 0 0 360 800 61.7229\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 6 0 8 104.5\nFRAG 10 2 6 179.8\nFRAG 10 8 15 179.8\nFRAG 12 0 4 253.1\nFRAG 12 6 10 253.1\nREADY 1 700 298 70.0193\nFRAME 1 1 0 0 0 700 800 84.4118\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "picture",
+      "source": "# Before sentinel\n\n<picture><source srcset=\"missing.png\"><img src=\"missing.png\"></picture>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:1-3:9",
+          "literal": "<picture>"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:10-3:38",
+          "literal": "<source srcset=\"missing.png\">"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:39-3:61",
+          "literal": "<img src=\"missing.png\">"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:62-3:71",
+          "literal": "</picture>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "44881c8d494fc38f7ce57f40a8dd2e098bd803ee34cfaec5dad4885c5aaee9a7",
+          "body_html": "<h1>Before sentinel</h1>\n<p><picture><source srcset=\"missing.png\"><img src=\"missing.png\"></picture></p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 66.2135\nFRAME 1 1 0 0 0 360 800 61.0458\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 76.8843\nFRAME 1 1 0 0 0 700 800 90.3659\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "html-image",
+      "source": "# Before sentinel\n\n<img src=\"missing.png\">\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:23",
+          "literal": "<img src=\"missing.png\">\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "4f842e27052e7078ae8e6be4fc534d62eefb9cfec8d7fda900847bf587f9bab3",
+          "body_html": "<h1>Before sentinel</h1>\n<img src=\"missing.png\">\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 360 249.2 40.0005\nFRAME 1 1 0 0 0 360 800 51.0406\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 131\nFRAG 5 8 15 131\nFRAG 7 0 4 204.3\nFRAG 7 6 10 204.3\nREADY 1 700 249.2 78.8454\nFRAME 1 1 0 0 0 700 800 84.8123\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "table",
+      "source": "# Before sentinel\n\n<table><tr><td>Celda</td></tr></table>\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "html_block",
+          "sourcepos": "3:1-3:38",
+          "literal": "<table><tr><td>Celda</td></tr></table>\n"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "e52b414a5d1c6fc4e17a60cd7aa51b45ec234f8f6b4f7c83cfcf6f9bd553778b",
+          "body_html": "<h1>Before sentinel</h1>\n<table><tr><td>Celda</td></tr></table>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 165.8\nFRAG 5 8 15 165.8\nFRAG 7 0 4 239.1\nFRAG 7 6 10 239.1\nREADY 1 360 284 66.0405\nFRAME 1 1 0 0 0 360 800 63.7012\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 5 2 6 165.8\nFRAG 5 8 15 165.8\nFRAG 7 0 4 239.1\nFRAG 7 6 10 239.1\nREADY 1 700 284 75.279\nFRAME 1 1 0 0 0 700 800 79.7765\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "a",
+      "source": "# Before sentinel\n\nAntes <a href=\"https://example.org\">link</a> después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:6",
+          "literal": "Antes "
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:7-3:36",
+          "literal": "<a href=\"https://example.org\">"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:37-3:40",
+          "literal": "link"
+        },
+        {
+          "type": "html_inline",
+          "sourcepos": "3:41-3:44",
+          "literal": "</a>"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:45-3:53",
+          "literal": " después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "4b3975a06825b369a8561a501927ed2c311b680d3693bf4b54d7a364fe73afb7",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes <a href=\"https://example.org\">link</a> después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        },
+        "plain_alerts": {
+          "exit": 1,
+          "stdout": "",
+          "stderr": "Raw HTML is not supported (line 3)\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "ERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 36 39 75.7\nFRAG 3 45 52 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 29.2416\nFRAME 1 1 0 0 0 360 800 28.2656\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 36 39 75.7\nFRAG 3 45 52 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 28.2307\nFRAME 1 1 0 0 0 700 800 35.0134\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "escaped",
+      "source": "# Before sentinel\n\nAntes &lt;kbd&gt;literal&lt;/kbd&gt; después\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "3:1-3:45",
+          "literal": "Antes <kbd>literal</kbd> después"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "cffb3ef773bbf063987511f21211a56bd5ff2758042572df90443e9e4323ea17",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes &lt;kbd&gt;literal&lt;/kbd&gt; después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "10525e711654631cfb244949aee1c4109d463f68f5dac20768f95605f5f70641",
+          "body_html": "<h1><span data-mdview=\"0\">Before sentinel</span></h1>\n<p><span data-mdview=\"1\">Antes &lt;kbd&gt;literal&lt;/kbd&gt; después</span></p>\n<h1><span data-mdview=\"2\">After sentinel</span></h1>\n<p><span data-mdview=\"3\">After body.</span></p>\n"
+        },
+        "plain_alerts": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "cffb3ef773bbf063987511f21211a56bd5ff2758042572df90443e9e4323ea17",
+          "body_html": "<h1>Before sentinel</h1>\n<p>Antes &lt;kbd&gt;literal&lt;/kbd&gt; después</p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 6 32 75.7\nFRAG 3 37 44 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 49.0511\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 6 32 75.7\nFRAG 3 37 44 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 67.3051\nFRAME 1 1 0 0 0 360 800 68.2351\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 0 4 75.7\nFRAG 3 6 32 75.7\nFRAG 3 37 44 75.7\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 71.8392\nFRAME 1 1 0 0 0 700 800 94.1556\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "code",
+      "source": "# Before sentinel\n\n`<kbd>literal</kbd>`\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "5:3-5:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:1-7:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "b431726cbaaaef307348900c8263783f9a03c9776ff88a0094a743d9adca65ac",
+          "body_html": "<h1>Before sentinel</h1>\n<p><code>&lt;kbd&gt;literal&lt;/kbd&gt;</code></p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "5c45eb1a7cb56ae913151af52bcad0628b65d8d2744e152ea7a70faebd38cdba",
+          "body_html": "<h1><span data-mdview=\"0\">Before sentinel</span></h1>\n<p><code data-mdview=\"1\">&lt;kbd&gt;literal&lt;/kbd&gt;</code></p>\n<h1><span data-mdview=\"2\">After sentinel</span></h1>\n<p><span data-mdview=\"3\">After body.</span></p>\n"
+        },
+        "plain_alerts": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "b431726cbaaaef307348900c8263783f9a03c9776ff88a0094a743d9adca65ac",
+          "body_html": "<h1>Before sentinel</h1>\n<p><code>&lt;kbd&gt;literal&lt;/kbd&gt;</code></p>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 1 18 77.2\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 75.5893\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 1 18 77.2\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 360 269.2 71.9558\nFRAME 1 1 0 0 0 360 800 60.1246\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 3 1 18 77.2\nFRAG 5 2 6 151\nFRAG 5 8 15 151\nFRAG 7 0 4 224.3\nFRAG 7 6 10 224.3\nREADY 1 700 269.2 106.806\nFRAME 1 1 0 0 0 700 800 92.456\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    },
+    {
+      "case": "fenced",
+      "source": "# Before sentinel\n\n```html\n<div>literal</div>\n```\n\n# After sentinel\n\nAfter body.\n",
+      "cmark_nodes": [
+        {
+          "type": "text",
+          "sourcepos": "1:3-1:17",
+          "literal": "Before sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "7:3-7:16",
+          "literal": "After sentinel"
+        },
+        {
+          "type": "text",
+          "sourcepos": "9:1-9:11",
+          "literal": "After body."
+        }
+      ],
+      "production": {
+        "plain": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "d2db5e88f7a607966e6041ab17300fe115455222032888735aa756c15cd9fd1a",
+          "body_html": "<h1>Before sentinel</h1>\n<pre><code class=\"language-html\">&lt;div&gt;literal&lt;/div&gt;\n</code></pre>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        },
+        "marked": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "51f014022da29f212318dc270ad059e0b79501c5dd1ce2cad15ee25a115b6bab",
+          "body_html": "<h1><span data-mdview=\"0\">Before sentinel</span></h1>\n<pre><code><span data-mdview=\"1\">&lt;div&gt;literal&lt;/div&gt;</span>\n</code></pre>\n<h1><span data-mdview=\"2\">After sentinel</span></h1>\n<p><span data-mdview=\"3\">After body.</span></p>\n"
+        },
+        "plain_alerts": {
+          "exit": 0,
+          "stderr": "",
+          "html_sha256": "d2db5e88f7a607966e6041ab17300fe115455222032888735aa756c15cd9fd1a",
+          "body_html": "<h1>Before sentinel</h1>\n<pre><code class=\"language-html\">&lt;div&gt;literal&lt;/div&gt;\n</code></pre>\n<h1>After sentinel</h1>\n<p>After body.</p>\n"
+        }
+      },
+      "production_load": {
+        "exit": 0,
+        "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 4 0 17 90.8\nFRAG 7 2 6 178.2\nFRAG 7 8 15 178.2\nFRAG 9 0 4 251.5\nFRAG 9 6 10 251.5\nREADY 1 700 296.4 33.9425\n",
+        "stderr": ""
+      },
+      "bypass": {
+        "360": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 4 0 17 90.8\nFRAG 7 2 6 178.2\nFRAG 7 8 15 178.2\nFRAG 9 0 4 251.5\nFRAG 9 6 10 251.5\nREADY 1 360 296.4 31.8845\nFRAME 1 1 0 0 0 360 800 27.12\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        },
+        "700": {
+          "protocol": {
+            "exit": 0,
+            "stdout": "FRAG 1 2 7 2.4\nFRAG 1 9 16 2.4\nFRAG 4 0 17 90.8\nFRAG 7 2 6 178.2\nFRAG 7 8 15 178.2\nFRAG 9 0 4 251.5\nFRAG 9 6 10 251.5\nREADY 1 700 296.4 77.4067\nFRAME 1 1 0 0 0 700 800 79.8834\n",
+            "stderr": ""
+          },
+          "plain_marked_pixels": {
+            "AE": "0 (0)",
+            "exit": 0
+          }
+        }
+      },
+      "source_unchanged": true
+    }
+  ],
+  "after_heading_draw_checks": [
+    {
+      "case": "br-inline",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 179.8,
+      "draw_top": 179
+    },
+    {
+      "case": "br-inline",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 179.8,
+      "draw_top": 179
+    },
+    {
+      "case": "br-block",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "br-block",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "kbd",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "kbd",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "sup-sub",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "sup-sub",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "span",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "span",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "p-block",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "p-block",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "div-block",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "div-block",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "div-multiline",
+      "width": 360,
+      "after_source_line": 8,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "div-multiline",
+      "width": 700,
+      "after_source_line": 8,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "div-blank",
+      "width": 360,
+      "after_source_line": 9,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "div-blank",
+      "width": 700,
+      "after_source_line": 9,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "comment-inline",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "comment-inline",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "comment-block",
+      "width": 360,
+      "after_source_line": 6,
+      "fragment_y": 102.2,
+      "draw_top": 102
+    },
+    {
+      "case": "comment-block",
+      "width": 700,
+      "after_source_line": 6,
+      "fragment_y": 102.2,
+      "draw_top": 102
+    },
+    {
+      "case": "kbd-unclosed",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "kbd-unclosed",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "span-multiline",
+      "width": 360,
+      "after_source_line": 6,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "span-multiline",
+      "width": 700,
+      "after_source_line": 6,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "attributes",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "attributes",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "align-size",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "align-size",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "foreign-metadata",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "foreign-metadata",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "details",
+      "width": 360,
+      "after_source_line": 10,
+      "fragment_y": 179.8,
+      "draw_top": 179
+    },
+    {
+      "case": "details",
+      "width": 700,
+      "after_source_line": 10,
+      "fragment_y": 179.8,
+      "draw_top": 179
+    },
+    {
+      "case": "picture",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "picture",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "html-image",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "html-image",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 131.0,
+      "draw_top": 131
+    },
+    {
+      "case": "table",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 165.8,
+      "draw_top": 165
+    },
+    {
+      "case": "table",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 165.8,
+      "draw_top": 165
+    },
+    {
+      "case": "a",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "a",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "escaped",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "escaped",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "code",
+      "width": 360,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "code",
+      "width": 700,
+      "after_source_line": 5,
+      "fragment_y": 151.0,
+      "draw_top": 151
+    },
+    {
+      "case": "fenced",
+      "width": 360,
+      "after_source_line": 7,
+      "fragment_y": 178.2,
+      "draw_top": 178
+    },
+    {
+      "case": "fenced",
+      "width": 700,
+      "after_source_line": 7,
+      "fragment_y": 178.2,
+      "draw_top": 178
+    }
+  ],
+  "raw_block_metadata_collision": {
+    "source": "# Before\n\n<div data-mdview=\"999\">Text</div>\n\n# After\n",
+    "protocol": {
+      "exit": 0,
+      "stdout": "ERROR 766563746f723a3a5f4d5f72616e67655f636865636b3a205f5f6e202877686963682069732039393929203e3d20746869732d3e73697a65282920287768696368206973203229\n",
+      "stderr": ""
+    }
+  },
+  "recovery": {
+    "exit": 0,
+    "stdout": "FRAG 1 2 10 2.4\nFRAG 3 0 4 75.7\nFRAG 3 6 30 75.7\nFRAG 3 35 43 75.7\nREADY 1 700 120.6 49.9747\nFRAME 1 1 0 0 0 700 200 44.8681\nERROR 5261772048544d4c206973206e6f7420737570706f7274656420286c696e65203329\nERROR 496e76616c696420445241572072657175657374\nFRAG 1 2 10 2.4\nFRAG 3 0 4 75.7\nFRAG 3 6 30 75.7\nFRAG 3 35 43 75.7\nREADY 3 700 120.6 6.71954\nFRAME 3 3 0 0 0 700 200 9.43333\n",
+    "stderr": ""
+  }
+}

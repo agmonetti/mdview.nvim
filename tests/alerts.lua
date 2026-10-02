@@ -83,6 +83,7 @@ for _,kind in ipairs(types) do
   fixture[#fixture+1]="> [!" .. kind .. "]"
   body_lines[kind]=#fixture+1
   fixture[#fixture+1]="> " .. kind .. " body with **bold**, *emphasis*, `code`, &amp; café."
+  if kind == "NOTE" then fixture[#fixture]=fixture[#fixture] .. " <kbd>kbd</kbd><sup>2</sup>" end
   fixture[#fixture+1]=">"
   fixture[#fixture+1]="> - first item"
   fixture[#fixture+1]="> - second item"
@@ -192,6 +193,7 @@ local function check()
   local enabled=html(source,css,"plain",true)
   local body=assert(enabled:match("<main[^>]*>(.*)</main>"))
   assert(not body:find("[!",1,true),"recognized marker leaked into rendered alert")
+  assert(body:find("<kbd>",1,true) and body:find("<sup>",1,true),"closed HTML did not interoperate with an alert body")
   for _,kind in ipairs(types) do
     local title=kind:sub(1,1) .. kind:sub(2):lower()
     assert(body:find(">" .. title .. "</p>",1,true),"missing visible alert title " .. kind)

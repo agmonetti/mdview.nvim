@@ -1,0 +1,263 @@
+{
+  "checks": [
+    {
+      "src": "small.png",
+      "inline": false,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "small.png",
+      "inline": false,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "small.png",
+      "inline": true,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "small.png",
+      "inline": true,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "space name.png",
+      "inline": false,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "space name.png",
+      "inline": false,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "space name.png",
+      "inline": true,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "space name.png",
+      "inline": true,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "東京 café.png",
+      "inline": false,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "東京 café.png",
+      "inline": false,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "東京 café.png",
+      "inline": true,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "東京 café.png",
+      "inline": true,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "amp&amp;name.png",
+      "inline": false,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "amp&amp;name.png",
+      "inline": false,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "amp&amp;name.png",
+      "inline": true,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "amp&amp;name.png",
+      "inline": true,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "literal%2520.png",
+      "inline": false,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "literal%2520.png",
+      "inline": false,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "src": "literal%2520.png",
+      "inline": true,
+      "width": 240,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "240 4096"
+    },
+    {
+      "src": "literal%2520.png",
+      "inline": true,
+      "width": 760,
+      "pixels": "equal-stock-Markdown",
+      "viewport": "760 4096"
+    },
+    {
+      "format": "jpg",
+      "pixels": "equal-stock-Markdown"
+    },
+    {
+      "format": "gif",
+      "pixels": "equal-stock-Markdown"
+    },
+    {
+      "format": "bmp",
+      "pixels": "equal-stock-Markdown"
+    },
+    {
+      "format": "webp",
+      "pixels": "equal-stock-Markdown"
+    },
+    {
+      "src": "missing.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: cannot open local image"
+    },
+    {
+      "src": "corrupt.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: unsupported or corrupt image (static PNG/JPEG/GIF/BMP/WebP only)"
+    },
+    {
+      "src": "truncated.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: corrupt local image"
+    },
+    {
+      "src": "wide.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: intrinsic image dimensions exceed pixel safety budget"
+    },
+    {
+      "src": "tall.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: intrinsic image dimensions exceed pixel safety budget"
+    },
+    {
+      "src": "pixels.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: intrinsic image dimensions exceed pixel safety budget"
+    },
+    {
+      "src": "encoded.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: image must be a regular file within 64MiB encoded budget"
+    },
+    {
+      "src": "resource.svg",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: unsupported or corrupt image (static PNG/JPEG/GIF/BMP/WebP only)"
+    },
+    {
+      "src": "animated.gif",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: unsupported or corrupt image (static PNG/JPEG/GIF/BMP/WebP only)"
+    },
+    {
+      "src": "http://invalid.example/x",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "https://invalid.example/x",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "data:image/png;base64,AAAA",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "file:///tmp/no.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "//invalid.example/x",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "ftp://invalid.example/x",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "javascript:evil()",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "%68%74%74%70%3A%2F%2Finvalid.example/x",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "bad%00.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "src": "bad%ZZ.png",
+      "fallback": "escaped-original",
+      "diagnostic": "HTML subset at 3:8: invalid or nonlocal image URL"
+    },
+    {
+      "retained_pixel_budget": "third distinct 12Mi-pixel image declined"
+    },
+    {
+      "same_worker_recovery": true,
+      "repeat_draw": "pixel-identical-no-decode"
+    }
+  ],
+  "production_worker": "/home/agus-hy/Documentos/mdview-nvim-lite/build/mdview-preview"
+}

@@ -17,6 +17,7 @@ package.preload["image.utils.term"] = function()
   return {get_size=function() return {cell_width=10, cell_height=20} end}
 end
 local mdview = require("mdview")
+assert(not pcall(mdview.setup, {html="false"}), "nonboolean HTML option accepted")
 vim.cmd("runtime plugin/mdview.lua")
 local command_completion = vim.fn.getcompletion("MdV", "cmdline")
 assert(command_completion[1] == "MdView", "toggle is not first in command completion")
@@ -39,6 +40,46 @@ local function check()
     "> Quote with `inline code`", "", "```lua", "print('hello')", "repeated repeated", "```", "", "![alt repeated](local%20image.png)", "", "\tindented code", "", ">\t\tpartially indented code"}
   vim.fn.writefile(text, path)
   command({"magick", "-size", "20x20", "xc:red", directory .. "/local image.png"})
+  local function hexpath(value)
+    return (value:gsub(".", function(c) return string.format("%02x", c:byte()) end))
+  end
+  local subset=directory .. "/html-subset.md"
+  vim.fn.writefile({"<p>safe <kbd>kbd</kbd><br>next <sup>2</sup> <span>plain</span></p>", "",
+    "<details><summary>literal</summary></details>", "", "<kbd>broken", "", "# HTML tail"}, subset)
+  local html_default=command({root .. "/build/mdview-preview", "--html", subset, root .. "/styles/markdown.css", "marked"})
+  assert(html_default:find("<kbd",1,true) and html_default:find("<br",1,true)
+    and html_default:find("<sup",1,true) and html_default:find("&lt;details&gt;",1,true)
+    and html_default:find("&lt;kbd&gt;broken",1,true)
+    and not html_default:find("<details>",1,true), "closed HTML subset or localized literal fallback")
+  local disabled=vim.system({root .. "/build/mdview-preview", "--html", subset, root .. "/styles/markdown.css", "plain", "html=0"},
+    {text=true}):wait()
+  assert(disabled.code~=0 and disabled.stderr:find("Raw HTML",1,true), "html=0 did not restore raw HTML rejection")
+  local html_image=directory .. "/html-image.md"
+  vim.fn.writefile({"Before <img src=\"local image.png\" alt=\"HTML pixel\"> after", "", "# HTML image tail"}, html_image)
+  local html_image_load=table.concat({"LOAD", 1, 700, hexpath(html_image), hexpath(directory),
+    hexpath(root .. "/styles/markdown.css")}, " ")
+  local html_image_output=directory .. "/html-image-viewport.png"
+  local html_image_result=vim.system({root .. "/build/mdview-preview"}, {text=true, stdin=html_image_load
+    .. "\nDRAW 1 1 0 0 0 400 " .. hexpath(html_image_output) .. "\nQUIT\n"}):wait()
+  assert(html_image_result.code==0 and not html_image_result.stderr:find("HTML subset",1,true),
+    "valid local HTML image hit the literal fallback: " .. html_image_result.stderr)
+  assert(html_image_result.stdout:find("READY 1",1,true) and html_image_result.stdout:find("FRAME 1 1",1,true)
+    and html_image_result.stdout:find("FRAG 1 7 ",1,true), "production local HTML image did not lay out, draw and retain its source anchor")
+  -- A rejected remote image inside a raw block must inherit the surrounding
+  -- paragraph's source label, not the document root's label.
+  local remote_image=directory .. "/remote-image.md"
+  vim.fn.writefile({"<p align=\"center\">", "  <img src=\"https://example.invalid/banner.png\" alt=\"banner\" width=\"600\">",
+    "</p>", "", "# Following heading"}, remote_image)
+  local remote_html=command({root .. "/build/mdview-preview", "--html", remote_image, root .. "/styles/markdown.css", "marked"})
+  assert(remote_html:find("&lt;img src=",1,true) and not remote_html:find("<img src=",1,true),
+    "remote HTML image was not preserved as a visible literal")
+  local remote_load=table.concat({"LOAD", 1, 700, hexpath(remote_image), hexpath(directory),
+    hexpath(root .. "/styles/markdown.css")}, " ")
+  local remote_result=command({root .. "/build/mdview-preview"}, remote_load
+    .. "\nDRAW 1 1 1 0 0 400 " .. hexpath(directory .. "/remote-image.png") .. "\nQUIT\n")
+  assert(remote_result:find("READY 1",1,true) and remote_result:find("FRAME 1 1",1,true)
+    and remote_result:find("FRAG 2 2 ",1,true) and remote_result:find("FRAG 5 2 ",1,true),
+    "nested rejected image lost its source anchor or prevented following content from rendering")
   -- Native AST instrumentation must not change pixels or lose local image resolution.
   for _, mode in ipairs({"plain", "marked"}) do
     local html=command({root .. "/build/mdview-preview", "--html", path, root .. "/styles/markdown.css", mode})
@@ -50,9 +91,6 @@ local function check()
   local compare=vim.system({"magick", "compare", "-metric", "AE", directory .. "/plain.png", directory .. "/marked.png", "null:"}, {text=true}):wait()
   assert(compare.code==0 and tonumber(compare.stderr:match("^[%d.]+"))==0, "instrumentation changes pixels: " .. compare.stderr)
   -- Fast transient PNG encoding must preserve native viewport pixels, including local images.
-  local function hexpath(value)
-    return (value:gsub(".", function(c) return string.format("%02x", c:byte()) end))
-  end
   local load = table.concat({"LOAD", 1, 700, hexpath(path), hexpath(directory), hexpath(root .. "/styles/markdown.css")}, " ")
   local ready = command({root .. "/build/mdview-preview"}, load .. "\nQUIT\n")
   local document_height = math.floor(assert(tonumber(ready:match("READY %d+ %d+ ([%d.]+)"))))
@@ -134,10 +172,16 @@ local function check()
   api.nvim_win_set_width(s.preview_win, 35)
   api.nvim_exec_autocmds("WinResized", {})
   wait(function() return s.revision>revision and s.frame.width==350 and not s.busy end, "width relayout")
-  api.nvim_buf_set_lines(s.source_buf, 0, 0, false, {"<kbd>unsupported</kbd>"})
-  wait(function() return s.error and s.error:match("Raw HTML") end, "HTML error")
+  local html_revision=s.revision
+  api.nvim_buf_set_lines(s.source_buf, 0, 0, false, {"<kbd>default enabled</kbd>"})
+  wait(function() return s.revision>html_revision and not s.error and s.loaded and s.frame.revision==s.revision and not s.busy end,
+    "default HTML-enabled worker")
+  mdview.setup({html=false})
+  api.nvim_buf_set_lines(s.source_buf, 0, 0, false, {"<kbd>disabled</kbd>"})
+  wait(function() return s.error and s.error:match("Raw HTML") end, "explicit HTML disable")
+  mdview.setup({html=true})
   api.nvim_buf_set_lines(s.source_buf, 0, 1, false, {})
-  wait(function() return not s.error and s.loaded and s.frame.revision==s.revision and not s.busy end, "error recovery")
+  wait(function() return not s.error and s.loaded and s.frame.revision==s.revision and not s.busy end, "HTML recovery")
   -- Overlapping edits and width changes must publish only the latest source revision.
   for n=1,6 do
     api.nvim_buf_set_lines(s.source_buf, 0, 1, false, {"# Latest " .. n})

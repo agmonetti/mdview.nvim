@@ -158,12 +158,31 @@ markers alone on the first line of a standalone quote are recognized; escaped,
 unknown, code and nested markers stay ordinary Markdown. Custom alert titles and
 collapsible admonitions are not supported. See [alert configuration](docs/configuration.md#github-alerts).
 
+## Closed HTML subset
+
+The preview enables a deliberately small, sanitized HTML subset by default:
+`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, and local
+`img` elements with `src`/`alt`. Unsupported or malformed fragments are shown as
+escaped literal text with a source-position diagnostic; they do not abort the
+document. User-supplied attributes are discarded except image `src` and `alt`.
+Remote `https://...` images are shown as literal `<img>` text, not fetched.
+For example, `<img src="assets/banner.png" alt="Banner">` renders a local
+file relative to the Markdown document; the same tag with a remote `src`
+does not render an image. Image `width`/`height` attributes are not applied.
+SVG, HTML tables, links and arbitrary HTML are not included.
+
+Disable raw HTML explicitly with `require("mdview").setup({ html = false })`;
+Markdown images keep their existing loader and format behavior. See the
+[HTML policy and image limits](docs/configuration.md#closed-html-subset) and
+[development evidence](docs/development.md#closed-html-subset).
+
 ## Mermaid diagrams (optional)
 
 Mermaid fences remain literal code blocks unless explicitly enabled. The optional
-Merman CLI integration preserves the original fences and renders unsaved changes
-automatically. The evaluated build supports **ER diagrams**, not complete Mermaid
-compatibility; relationship labels can overlap.
+Merman CLI integration renders unsaved changes automatically. The evaluated build
+supports **ER diagrams**, not complete Mermaid compatibility; unsupported diagram
+families (such as `flowchart LR`) remain literal code blocks while the rest of the
+document renders. Relationship labels in rendered ER diagrams can overlap.
 
 1. From the checkout, explicitly build the pinned optional renderer:
 
@@ -188,15 +207,18 @@ Opening a preview never downloads or builds it. If the renderer is missing, the
 preview reports the build command. A custom executable path is an
 [advanced option](docs/configuration.md#mermaid).
 
-Restart Neovim after building/configuring. Diagram errors identify the opening
-source line and recover after correction. Large graphs may exceed resource limits.
+Restart Neovim after building/configuring. Malformed supported diagrams and other
+render failures identify the opening source line and recover after correction;
+unsupported diagram families instead stay literal. Large graphs may exceed resource
+limits.
 See the [Mermaid configuration](docs/configuration.md#mermaid) and
 [evaluation and integration report](MERMAID-RESEARCH.md) for limits and compatibility.
 
 ## Limitations
 
-- Raw HTML tags and comments produce an explicit preview error; removing them
-  restores rendering. Unsupported source attribution also fails explicitly.
+- Arbitrary HTML is not supported. Unsupported or malformed fragments render as
+  escaped text; `html=false` instead rejects raw HTML with a preview error.
+  Source attribution may still fail explicitly for untested Markdown combinations.
 - No math rendering, code syntax highlighting, interactive links or text selection.
 - CSS support is limited by litehtml; browser/VS Code fidelity is not guaranteed.
 - Local image formats depend on GdkPixbuf; remote images are not fetched.

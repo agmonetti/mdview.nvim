@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-02",
+  "scope": "Closed HTML subset implemented only in generated isolated worker. No production adoption, default/dependency/dotfile change, download, commit or Kitty acceptance.",
+  "production_before_and_after_sha256": {
+    "src/preview.cpp": "bca130fe3c52eefe3c370eb7d048de0002a0cb3fa23aebcdaeb3d9fc7c25306e",
+    "src/main.cpp": "0596c701da0a65b5483d75e04db0dbfd8c9f38399da8daacc60d6fe6d53464ae",
+    "CMakeLists.txt": "7e96c78924e1790f95844e07bc2e0824f52ebe595facef3fc5e7750fe48dd3d2",
+    "lua/mdview/init.lua": "487a4efb45a37dbd31ec267ba465c74ff3d0dc73421ca0dfede08fae774c7532",
+    "styles/markdown.css": "608f5d5f0105cf5d47fa4e63b7ec9b71bb44e4f1bde07164f8412ae5963aa819",
+    "build/mdview-preview": "c67d55d8c997e11243c2004df80f4d0298f8d14dc2a04f8b565475b584716a36",
+    "build/mdview-render": "874515aff4c8ab7b87fe8d76502787ec8460aee5e6302bf86e11c68b1bb19008"
+  },
+  "experimental_sha256": {
+    "tests/html/subset.hpp": "1c6fe22c56cc91b9a1b35f2adf580471e6dfc2724407d54bfee72bf64070f387",
+    "tests/html/generate.py": "b5e6f6960876e2b0c0d6d3c751f22a6e3df785f7ce5d48b21088ad27feb701ba",
+    "tests/html/trace.hpp": "f201b3bc171c361d13e312d235b05127d948eea9bf278ec5e9e56c6d4dfd6de6",
+    "tests/html/check.py": "5ded3ac7830cda974db3d62f3c089e2bc677d22eccfda78727d951d60c0b7302",
+    "tests/html/regression.lua": "cdaaaf91ee368720744759906726287405019c9b81372ef2912aee7de0b8c8e9",
+    "build/html-subset/mdview-preview": "e5feb768a4a968c86b4b030a36e8db5f65a57854f5d3da7ec3a710318be0d73e"
+  },
+  "checks": [
+    {
+      "command": "python3 tests/html/check.py",
+      "exit": 0,
+      "stdout": "PASS: 47 closed-subset cases, 3 widths, independent draw_text/source-byte coordinates, native plain/marked and sanitized block pixels, persistent recovery",
+      "widths": [
+        240,
+        420,
+        760
+      ],
+      "coordinate_scope": "Expected before/inside/after tokens, repeated Unicode and original UTF-8 byte coverage compared to actual independent Cairo draw_text callbacks; tolerance <=0.5px accommodates pixel-rounded draw positions. Not every document leaf or arbitrary soft-wrap accuracy."
+    },
+    {
+      "command": "nvim --headless -u NONE -l tests/html/regression.lua",
+      "exit": 0,
+      "stdout": [
+        "PASS: 39 HTML policy cases in replace/split, original unsaved bytes, same-worker fallback/correction, independent current-frame pixels, alerts, resize/scroll/cleanup, escapes/code/fences",
+        "PASS: existing real Mermaid enabled and independently rendered before/after resize"
+      ],
+      "display": "image.nvim display and cell sizes mocked; worker and optional bundled ER renderer real"
+    },
+    {
+      "command": "nvim --headless -u NONE -l tests/plugin.lua",
+      "exit": 0,
+      "stdout": "PASS: native pixel parity, UTF-8 soft-wrap, edit, resize, recovery, bursts, continuous reader scroll, placement, replace/split modes, close/reopen, cleanup"
+    },
+    {
+      "command": "./tests/smoke.sh",
+      "exit": 0,
+      "stdout": "PASS: CLI → HTML/CSS → temporary file cleanup (mock cmark)"
+    },
+    {
+      "command": "bash -n scripts/build-html-subset scripts/manual-html-subset",
+      "exit": 0
+    },
+    {
+      "command": "LSP diagnostics build/html-subset/preview.cpp",
+      "result": "OK",
+      "note": "Generated .clangd selects isolated compilation database; no root dotfile change."
+    }
+  ],
+  "smoke": {
+    "fixture": "tests/html/manual.md",
+    "alerts": true,
+    "load_width": 700,
+    "draws": [
+      {
+        "y": 0,
+        "width": 700,
+        "height": 800,
+        "sha256": "1e54e5ed514975266a4b6945901f440bcf8bbd41eceaee9cd762cb1fb0fdc162"
+      },
+      {
+        "y": 750,
+        "width": 700,
+        "height": 600,
+        "sha256": "38839a03243bbfd6086a4a960c7c040da3bc0dccfde4ca624687b313637f8695"
+      }
+    ],
+    "protocol": "FRAG 1 2 7 2.4\nFRAG 1 9 12 2.4\nFRAG 1 14 19 2.4\nFRAG 1 21 23 2.4\nFRAG 1 25 32 2.4\nFRAG 1 34 40 49.2\nFRAG 3 0 5 122.5\nFRAG 3 10 14 151.3\nFRAG 3 20 24 180.1\nFRAG 3 31 35 208.9\nFRAG 5 0 7 257.4\nFRAG 5 9 13 257.4\nFRAG 5 20 23 257.4\nFRAG 5 31 31 257.4\nFRAG 5 38 41 257.4\nFRAG 5 48 48 257.4\nFRAG 5 50 50 257.4\nFRAG 5 56 56 264\nFRAG 5 63 64 257.4\nFRAG 6 0 0 257.4\nFRAG 6 6 6 254.4\nFRAG 6 13 13 257.4\nFRAG 6 39 43 257.4\nFRAG 6 45 48 257.4\nFRAG 6 50 50 257.4\nFRAG 6 56 63 257.4\nFRAG 6 65 66 257.4\nFRAG 6 68 70 257.4\nFRAG 6 71 73 257.4\nFRAG 6 81 81 257.4\nFRAG 9 0 5 306.5\nFRAG 9 7 15 306.5\nFRAG 9 17 27 306.5\nFRAG 9 29 32 306.5\nFRAG 9 39 42 306.5\nFRAG 9 50 52 306.5\nFRAG 9 54 54 306.5\nFRAG 9 60 68 306.5\nFRAG 10 0 5 306.5\nFRAG 10 7 14 306.5\nFRAG 10 16 21 335.3\nFRAG 10 23 27 335.3\nFRAG 15 0 3 364.1\nFRAG 15 5 13 364.1\nFRAG 15 15 16 364.1\nFRAG 15 20 23 364.1\nFRAG 15 25 32 364.1\nFRAG 15 35 35 364.1\nFRAG 15 37 45 364.1\nFRAG 15 47 48 364.1\nFRAG 15 50 54 364.1\nFRAG 15 56 61 364.1\nFRAG 19 0 5 412.9\nFRAG 20 22 26 412.9\nFRAG 20 28 35 412.9\nFRAG 22 3 13 487.35\nFRAG 22 15 18 487.35\nFRAG 22 20 24 487.35\nFRAG 22 26 32 487.35\nFRAG 24 0 48 548.8\nFRAG 25 0 3 548.8\nFRAG 25 5 49 577.6\nFRAG 25 51 69 577.6\nFRAG 26 0 18 606.4\nFRAG 26 20 42 606.4\nFRAG 27 0 1 606.4\nFRAG 27 3 40 635.2\nFRAG 27 42 45 635.2\nFRAG 27 47 57 635.2\nFRAG 28 0 15 635.2\nFRAG 28 17 75 664\nFRAG 30 3 9 718.45\nFRAG 30 11 13 718.45\nFRAG 30 15 20 718.45\nFRAG 30 22 29 718.45\nFRAG 32 0 8 779.9\nFRAG 32 10 10 779.9\nFRAG 32 12 22 779.9\nFRAG 32 25 35 782.9\nFRAG 32 37 46 782.9\nFRAG 32 48 48 779.9\nFRAG 35 0 3 843.8\nFRAG 35 5 28 843.8\nFRAG 35 30 42 843.8\nFRAG 38 2 2 912.7\nFRAG 39 2 6 959\nFRAG 39 8 11 959\nFRAG 39 18 21 959\nFRAG 39 28 28 959\nFRAG 39 30 30 959\nFRAG 39 36 36 956\nFRAG 39 44 46 959\nFRAG 39 54 58 959\nFRAG 39 60 63 959\nFRAG 39 71 71 959\nFRAG 41 3 10 1039.95\nFRAG 41 12 18 1039.95\nFRAG 41 20 25 1039.95\nFRAG 41 27 29 1039.95\nFRAG 41 31 34 1039.95\nFRAG 43 0 18 1101.4\nFRAG 43 20 32 1101.4\nFRAG 45 0 4 1130.2\nFRAG 45 6 12 1130.2\nFRAG 45 14 16 1130.2\nFRAG 45 18 21 1130.2\nFRAG 45 23 26 1130.2\nFRAG 45 28 33 1130.2\nFRAG 45 35 42 1130.2\nREADY 1 700 1175.1 238.65\nFRAME 1 1 0 0 0 700 800 107.152\nFRAME 1 2 0 750 750 700 600 38.3653\n",
+    "stderr": "HTML subset at 24:1: unsupported or malformed HTML\nHTML subset at 24:10: unsupported or malformed HTML\nHTML subset at 24:26: unsupported or malformed HTML\nHTML subset at 24:40: unsupported or malformed HTML\nHTML subset at 25:1: unsupported or malformed HTML\nHTML subset at 26:1: unsupported or malformed HTML\nHTML subset at 26:8: unsupported or malformed HTML\nHTML subset at 26:12: unsupported or malformed HTML\nHTML subset at 26:26: unsupported or malformed HTML\nHTML subset at 26:31: unsupported or malformed HTML\nHTML subset at 26:36: unsupported or malformed HTML\nHTML subset at 27:1: unsupported or malformed HTML\nHTML subset at 27:55: unsupported or malformed HTML\nHTML subset at 28:1: unsupported or malformed HTML\nHTML subset at 28:10: unsupported or malformed HTML\nHTML subset at 28:67: unsupported or malformed HTML\nHTML subset at 43:28: invalid HTML nesting\n",
+    "raster_inspection": "Inspected actual PNGs: br advances rows, kbd/sup/sub and opaque versus parsed Markdown, complete inline comment absent, unsupported literal resources/tags visible; lower frame shows literal/code controls, alert, malformed fallback and following text. Not live Kitty composition. Single-run timings in protocol not a benchmark."
+  },
+  "fixed_during_verification": [
+    "cmark sourcepos desynchronization following multiline inline comments: deterministic original-byte projection",
+    "metadata spans changed nested sup/sub geometry: metadata on original semantic elements",
+    "separate literal/raw/text spans introduced wrapping opportunities: aggregate metadata on original paragraph/list/heading/cell/main elements, with bare original text"
+  ],
+  "limits": [
+    "Production still rejects raw HTML. No public setup flag for prototype.",
+    "Diagnostics are localized stderr retained by unchanged controller, not new popup/status UI.",
+    "HTML resources/details/links/tables remain literal fallbacks; arbitrary HTML, universal font coverage and Kitty visual behavior not established.",
+    "No OS-wide resource-access audit or sandbox claim; tests verify HTML resource/style/event/internal attributes do not survive as executable markup."
+  ],
+  "failing_before_geometry_traces": {
+    "nested-repeated": {
+      "plain": "TEXT\t505245303031\t0\t2\t154\t42\nTEXT\t6265666f7265303031\t0\t76\t90\t21\nTEXT\t726570656174303031\t96\t76\t99\t21\nTEXT\t7570706572303031\t0\t103\t72\t18\nTEXT\t6c6f776572303031\t81\t108\t56\t14\nTEXT\t726570656174303031\t144\t108\t63\t14\nTEXT\t6166746572303031\t0\t133\t75\t21\nTEXT\t504f5354303031\t0\t209\t183\t42\n",
+      "instrumented": "TEXT\t505245303031\t0\t2\t154\t42\nTEXT\t6265666f7265303031\t0\t76\t90\t21\nTEXT\t726570656174303031\t96\t76\t99\t21\nTEXT\t7570706572303031\t0\t103\t72\t18\nTEXT\t6c6f776572303031\t81\t113\t56\t14\nTEXT\t726570656174303031\t144\t113\t63\t14\nTEXT\t6166746572303031\t0\t133\t75\t21\nTEXT\t504f5354303031\t0\t209\t183\t42\n"
+    },
+    "unsupported-picture": {
+      "plain": "TEXT\t505245303031\t0\t2\t154\t42\nTEXT\t3c706963747572653e756e737570706f727465643031353c2f706963747572653e\t0\t76\t334\t21\nTEXT\t666f6c6c6f77696e67303135\t0\t105\t113\t21\nTEXT\t504f5354303031\t0\t180\t183\t42\n",
+      "instrumented": "TEXT\t505245303031\t0\t2\t154\t42\nTEXT\t3c706963747572653e\t0\t76\t92\t21\nTEXT\t756e737570706f72746564303135\t92\t76\t144\t21\nTEXT\t3c2f706963747572653e\t0\t105\t98\t21\nTEXT\t666f6c6c6f77696e67303135\t104\t105\t113\t21\nTEXT\t504f5354303031\t0\t180\t183\t42\n"
+    }
+  }
+}

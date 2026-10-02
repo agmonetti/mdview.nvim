@@ -3,6 +3,8 @@ third_party/litehtml/
 .mdview-preview.*.html
 *.png
 AGENTS.md
+mdview-post-release-research.md
+pre-release.md
 .clangd
 tests/bench/results/*
 !tests/bench/results/factor06-readme-20260930/

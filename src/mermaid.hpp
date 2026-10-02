@@ -5,6 +5,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fcntl.h>
+#include <optional>
 #include <poll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
@@ -42,7 +43,7 @@ class MermaidRenderer {
         struct rlimit value {amount, amount};
         if (setrlimit(resource, &value) != 0) _exit(126);
     }
-    void execute(const std::string& source, const std::string& png, const std::string& errors) {
+    bool execute(const std::string& source, const std::string& png, const std::string& errors) {
         const auto pixels = std::min<uint64_t>(static_cast<uint64_t>(fit_width) * 4096, max_pixels);
         std::vector<std::string> arguments {binary, "render", source, "--format", "png", "--output", png,
             "--theme", theme, "--background", background, "--raster-fit-width", std::to_string(fit_width),
@@ -106,9 +107,15 @@ class MermaidRenderer {
         if (timed_out) throw std::runtime_error("Mermaid renderer exceeded its time budget");
         if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
             auto message = diagnostic(errors);
+            // The pinned CLI emits this diagnostic only when a detected family is not built in.
+            // A syntax, resource or subprocess failure must still invalidate the LOAD.
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 1
+                && message.rfind("Unsupported diagram type: ", 0) == 0
+                && message.size() > sizeof("Unsupported diagram type: ") - 1) return false;
             if (message.empty()) message = WIFSIGNALED(status) ? "renderer stopped by signal " + std::to_string(WTERMSIG(status)) : "renderer exited with status " + std::to_string(WEXITSTATUS(status));
             throw std::runtime_error("Mermaid render failed: " + message);
         }
+        return true;
     }
 public:
     ~MermaidRenderer() { clear(); }
@@ -136,7 +143,7 @@ public:
     }
     bool enabled() const { return !binary.empty(); }
     bool owns_image(const std::string& url) const { return std::find(images.begin(), images.end(), url) != images.end(); }
-    std::string render(const std::string& literal, int line) {
+    std::optional<std::string> render(const std::string& literal, int line) {
         try {
             if (literal.size() > max_source) throw std::runtime_error("Mermaid source exceeds 1 MiB");
             if (count >= 16) throw std::runtime_error("LOAD exceeds 16 Mermaid diagrams");
@@ -146,7 +153,11 @@ public:
             std::ofstream stream(source, std::ios::binary);
             stream.write(literal.data(), literal.size()); stream.close();
             if (!stream) throw std::runtime_error("Cannot write Mermaid source");
-            execute(source, png, errors);
+            if (!execute(source, png, errors)) {
+                std::filesystem::remove(source); std::filesystem::remove(errors);
+                std::filesystem::remove(png);
+                return std::nullopt;
+            }
             std::ifstream image(png, std::ios::binary);
             unsigned char header[24] {};
             image.read(reinterpret_cast<char*>(header), sizeof(header));

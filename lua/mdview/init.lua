@@ -1,7 +1,7 @@
 local M = {}
 local api = vim.api
 local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
-local options = { renderer = root .. "/build/mdview-preview", stylesheet = root .. "/styles/markdown.css", mode = "replace", raw = nil }
+local options = { renderer = root .. "/build/mdview-preview", stylesheet = root .. "/styles/markdown.css", mode = "replace", raw = nil, html = true }
 -- ponytail: one preview session; add per-window sessions when simultaneous previews are needed.
 local session
 local function wants_zbelow(opts)
@@ -157,6 +157,7 @@ function M.setup(opts)
   assert(opts.preset == nil or opts.preset == "fluid", "mdview: unknown preset " .. tostring(opts.preset))
   assert(opts.zbelow == nil or type(opts.zbelow) == "boolean", "mdview: zbelow must be boolean")
   assert(opts.alerts == nil or type(opts.alerts) == "boolean", "mdview: alerts must be boolean")
+  assert(opts.html == nil or type(opts.html) == "boolean", "mdview: html must be boolean")
   assert(opts.split_follow == nil or opts.split_follow == "viewport" or opts.split_follow == "cursor",
     "mdview: split_follow must be 'viewport' or 'cursor'")
   assert(opts.theme == nil or opts.theme == "dark" or opts.theme == "light" or opts.theme == "nvim",
@@ -407,6 +408,7 @@ function M.open(mode)
       status("Rendering Markdown…")
       local load = {"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}
       if alerts then load[#load+1] = "alerts=1" end
+      if options.html == false then load[#load+1] = "html=0" end
       if mermaid then
         load[#load+1] = hex(mermaid.renderer)
         load[#load+1] = hex(directory .. "/diagrams")
