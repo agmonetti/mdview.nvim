@@ -172,8 +172,8 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 The preview enables a deliberately small, sanitized HTML subset by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
 `img` elements with `src`/`alt`, and structured `details`/`summary` pairs.
-Inside a summary only, `<b>` is also allowed. Unsupported or malformed
-fragments are shown as escaped literal text with a source-position diagnostic;
+Inside a summary only, `<b>` is also allowed; block tags like `<p>` inside `<summary>`
+are not permitted (unlike GFM browser engines) and trigger a literal fallback.
 they do not abort the document. User-supplied attributes are discarded except
 image `src` and `alt`. Remote `https://...` images remain literal, not fetched.
 For example, `<img src="assets/banner.png" alt="Banner">` renders a local
