@@ -176,6 +176,7 @@ function M.close()
   local s = session
   if not s then return end
   session = nil
+  if s.mouse_namespace then vim.on_key(nil, s.mouse_namespace) end
   if s.smooth_timer then s.smooth_timer:stop(); s.smooth_timer:close(); s.smooth_timer=nil end
   if s.layer then s.layer.close() end
   if s.restore_cursor then s.restore_cursor() end
@@ -291,7 +292,8 @@ function M.open(mode)
   local s = { mode=mode, source_win=source_win, source_buf=source_buf, preview_win=preview_win, preview_buf=preview_buf,
     saved_win_opts=saved_win_opts, directory=directory, group=api.nvim_create_augroup("mdview.session", {clear=true}), revision=0, sequence=0,
     dirty=true, busy=false, loaded=false, pending="", fragments={}, error=nil, tick=-1, initial_line=initial_line,
-    current_y=0, initialized_y=false, raw=raw_supported, raw_image_id=raw_image_id, smooth=smooth }
+    current_y=0, initialized_y=false, raw=raw_supported, raw_image_id=raw_image_id, smooth=smooth,
+    details={}, detail_changes={}, selected_detail=nil }
   s.stylesheet = options.stylesheet
   s.split_follow = mode == "split" and options.split_follow == "cursor"
   local theme = options.theme
@@ -387,17 +389,77 @@ function M.open(mode)
     if vim.fn.chansend(s.job, command .. "\n") == 0 then error("Renderer stdin is closed") end
   end
   local pump, safe_pump, tick_smooth
+  local function detail_notice(text)
+    vim.notify("mdview: " .. text, vim.log.levels.INFO)
+  end
+  local function detail_source(lines, detail)
+    if not lines or not detail or detail.end_line > #lines then return nil end
+    return table.concat(vim.list_slice(lines, detail.start_line, detail.end_line), "\n")
+  end
+  local function request_detail(id)
+    if s.busy and not s.loaded and not s.inflight_detail then return end
+    if not valid() or s.dirty then return end
+    local detail = s.details[id]
+    if not detail then return end
+    local prior = s.detail_changes[id]
+    if prior == nil then
+      prior = s.inflight_detail and s.inflight_detail.id == id and s.inflight_detail.open
+      if prior == nil then prior = detail.open end
+    end
+    s.detail_changes[id] = not prior
+    safe_pump()
+  end
+  s.toggle_detail = request_detail
+  local function detail_at_line(line)
+    local result
+    for _, detail in pairs(s.details) do
+      if detail.start_line <= line and line <= detail.end_line
+        and (not result or detail.start_line >= result.start_line and detail.end_line <= result.end_line) then
+        result = detail
+      end
+    end
+    return result
+  end
+  s.detail_at_line = detail_at_line
   pump = function()
     if not valid() or s.busy or s.debouncing or s.dead then return end
     local sized, w, h = pcall(size)
     if not sized then status(w); return end
     local tick = api.nvim_buf_get_changedtick(source_buf)
     if tick ~= s.tick or w ~= s.width then s.dirty = true end
+    if s.loaded and not s.dirty then
+      for id, desired in pairs(s.detail_changes) do
+        local detail = s.details[id]
+        s.detail_changes[id] = nil
+        if detail and detail.open ~= desired then
+          s.revision = s.revision + 1
+          s.busy, s.loaded, s.last_key = true, false, nil
+          s.next_details = {}
+          s.fragments = {}
+          s.detail_anchor = {id=id, offset=detail.y - ((s.frame and s.frame.y) or 0)}
+          s.inflight_detail = {id=id, open=desired}
+          send(table.concat({"TOGGLE", s.revision, id, desired and 1 or 0}, " "))
+          return
+        end
+      end
+    end
     if s.dirty then
+      local previous = {}
+      for _, detail in pairs(s.details) do
+        if not detail.open then
+          local text = detail_source(s.source_lines, detail)
+          if text then previous[text] = (previous[text] or 0) + 1 end
+        end
+      end
+      s.restore_details = previous
+      local next_lines = api.nvim_buf_get_lines(source_buf, 0, -1, false)
+      if not vim.deep_equal(s.source_lines, next_lines) then s.selected_detail=nil end
+      s.source_lines = next_lines
+      s.detail_top, s.detail_position, s.detail_anchor = nil, nil, nil
       s.revision = s.revision + 1
       s.tick, s.width, s.height = tick, w, h
       s.snapshot = directory .. "/snapshot.md"
-      vim.fn.writefile(api.nvim_buf_get_lines(source_buf, 0, -1, false), s.snapshot)
+      vim.fn.writefile(s.source_lines, s.snapshot)
       if theme then
         vim.fn.writefile(vim.split(base_css .. "\n" .. require("mdview.theme").css(s.palette), "\n", {plain=true}), s.stylesheet)
       end
@@ -405,6 +467,8 @@ function M.open(mode)
       local base = name ~= "" and vim.fn.fnamemodify(name, ":h") or vim.fn.getcwd()
       s.dirty, s.busy, s.loaded, s.error = false, true, false, nil
       s.fragments = {}
+      s.next_details = {}
+      s.detail_changes = {}
       status("Rendering Markdown…")
       local load = {"LOAD", s.revision, w, hex(s.snapshot), hex(base), hex(s.stylesheet)}
       if alerts then load[#load+1] = "alerts=1" end
@@ -427,7 +491,9 @@ function M.open(mode)
         end
       end
       local line, col, botline, cursor_line, cursor_col, through_line, previous_top = position()
-      local key = table.concat({s.revision, line, col, botline, w, h, cursor_line or 0, cursor_col or 0, through_line or 0}, ":")
+      local source_position = table.concat({line, col, cursor_line or 0, cursor_col or 0}, ":")
+      if s.detail_position and s.detail_position ~= source_position then s.detail_top=nil; s.detail_position=nil end
+      local key = table.concat({s.revision, line, col, botline, w, h, cursor_line or 0, cursor_col or 0, through_line or 0, s.selected_detail or -1, s.detail_top or -1}, ":")
       if key == s.last_key then return end
       local now = vim.uv.hrtime() / 1000000
       if not s.smooth and s.next_frame_at and now < s.next_frame_at then
@@ -445,11 +511,16 @@ function M.open(mode)
       else
         s.frame_path = directory .. "/frame-" .. (s.sequence % 2) .. ".png"
       end
+      if s.detail_top then
+        s.detail_position = source_position
+        line, col = 0, s.detail_top
+      end
       local draw = {"DRAW", s.revision, s.sequence, line, col, botline, h, hex(s.frame_path)}
       if s.split_follow then
         s.request_cursor_key = table.concat({cursor_line, cursor_col, through_line}, ":")
-        vim.list_extend(draw, {cursor_line, cursor_col, through_line, previous_top})
+        vim.list_extend(draw, {cursor_line, cursor_col, through_line, s.detail_top or previous_top})
       end
+      if s.selected_detail then draw[#draw+1] = s.selected_detail end
       send(table.concat(draw, " "))
     end
   end
@@ -526,6 +597,12 @@ function M.open(mode)
       s.fragments[#s.fragments+1] = {line=tonumber(parts[2]), column=tonumber(parts[3]), finish=tonumber(parts[4]), y=tonumber(parts[5])}
       return
     end
+    if op == "DETAIL" then
+      local detail = {id=tonumber(parts[2]), start_line=tonumber(parts[3]), end_line=tonumber(parts[4]),
+        x=tonumber(parts[5]), y=tonumber(parts[6]), width=tonumber(parts[7]), height=tonumber(parts[8]), open=parts[9] == "1"}
+      s.next_details[detail.id] = detail
+      return
+    end
     s.busy = false
     if op == "ERROR" then
       s.loaded=false; s.error=unhex(parts[2] or "")
@@ -533,6 +610,31 @@ function M.open(mode)
       if s.dirty then safe_pump() end
     elseif op == "READY" then
       s.loaded=true; s.document_height=tonumber(parts[4]); s.layout_ms=tonumber(parts[5])
+      s.inflight_detail=nil
+      s.details=s.next_details or {}
+      s.next_details=nil
+      if s.restore_details then
+        local counts = {}
+        for _, detail in pairs(s.details) do
+          local text = detail_source(s.source_lines, detail)
+          if text then counts[text] = (counts[text] or 0) + 1 end
+        end
+        for id, detail in pairs(s.details) do
+          local text = detail_source(s.source_lines, detail)
+          if text and s.restore_details[text] == 1 and counts[text] == 1 then s.detail_changes[id] = false end
+        end
+        s.restore_details=nil
+      end
+      if s.selected_detail and not s.details[s.selected_detail] then s.selected_detail=nil end
+      if s.detail_anchor then
+        local anchor = s.details[s.detail_anchor.id]
+        if anchor then
+          local y = math.max(0, math.min(math.floor(anchor.y - s.detail_anchor.offset), math.max(0, s.document_height - s.height)))
+          if s.mode == "replace" then s.current_y=y; s.target_y=y
+          else s.detail_top=y end
+        end
+        s.detail_anchor=nil
+      end
       vim.fn.delete(s.snapshot)
       if s.mode == "replace" and not s.initialized_y then
         local init_y, initial_anchor = 0, 0
@@ -553,8 +655,9 @@ function M.open(mode)
       if not sized then status(w); return end
       local tick_check = api.nvim_buf_get_changedtick(source_buf) ~= s.tick
       -- Reader frames remain useful while input advances; rejecting them starves continuous scroll.
-      local moved = s.mode == "split" and (tonumber(parts[4]) ~= line_now or tonumber(parts[5]) ~= col_now)
+      local moved = s.mode == "split" and not s.detail_top and (tonumber(parts[4]) ~= line_now or tonumber(parts[5]) ~= col_now)
       if s.split_follow and s.request_cursor_key ~= table.concat({cursor_line, cursor_col, through_line}, ":") then moved = true end
+      if s.detail_top and s.detail_position ~= table.concat({line_now, col_now, cursor_line or 0, cursor_col or 0}, ":") then moved=true end
       if s.dirty or tick_check or moved or tonumber(parts[2]) ~= s.revision
         or tonumber(parts[7]) ~= w or tonumber(parts[8]) ~= h then
         safe_pump(); return
@@ -590,7 +693,8 @@ function M.open(mode)
       s.last_key=s.request_key
       s.last_drawn_y=tonumber(parts[6])
       s.frame={revision=tonumber(parts[2]), sequence=tonumber(parts[3]), line=tonumber(parts[4]), column=tonumber(parts[5]),
-        y=tonumber(parts[6]), width=w, height=h, path=s.frame_path, ms=tonumber(parts[9])}
+        y=tonumber(parts[6]), width=w, height=h, path=s.frame_path, ms=tonumber(parts[9]),
+        cell_width=cell.cell_width, cell_height=cell.cell_height, position=api.nvim_win_get_position(preview_win)}
       s.error=nil
       -- Keep one draw in flight, then immediately catch up to the latest requested position.
       if s.smooth then
@@ -658,6 +762,41 @@ function M.open(mode)
     if vim.fn.jobwait({s.job}, 1000)[1] == -1 then vim.fn.jobstop(s.job); vim.fn.jobwait({s.job}, 1000) end
     vim.fn.delete(directory, "rf")
   end})
+  -- A buffer-local mouse map is resolved in the *previous* window on the first
+  -- click into a split. Observe decoded clicks without changing user mappings
+  -- or the global 'mouse' option, then resolve the window after Neovim focuses it.
+  s.mouse_namespace = api.nvim_create_namespace("mdview.mouse")
+  local click_key = api.nvim_replace_termcodes("<LeftMouse>", true, false, true)
+  vim.on_key(function(key)
+    if key ~= click_key then return end
+    vim.schedule(function()
+      if not valid() or not s.loaded or not s.frame or s.frame.revision ~= s.revision or s.dirty then return end
+      local mouse = vim.fn.getmousepos()
+      local frame = s.frame
+      local sized, current_width, current_height = pcall(size)
+      if not sized or current_width ~= frame.width or current_height ~= frame.height
+        or cell.cell_width ~= frame.cell_width or cell.cell_height ~= frame.cell_height then return end
+      local pos = api.nvim_win_get_position(preview_win)
+      if mouse.winid ~= preview_win or mouse.winrow < 1 or mouse.wincol < 1
+        or pos[1] ~= frame.position[1] or pos[2] ~= frame.position[2]
+        or api.nvim_win_get_width(preview_win) * frame.cell_width ~= frame.width
+        or api.nvim_win_get_height(preview_win) * frame.cell_height ~= frame.height then return end
+      local left = (mouse.wincol - 1) * frame.cell_width
+      local top = frame.y + (mouse.winrow - 1) * frame.cell_height
+      if left >= frame.width or top >= frame.y + frame.height then return end
+      local hit, covered
+      for _, detail in pairs(s.details) do
+        local overlap_x = math.max(0, math.min(left + frame.cell_width, detail.x + detail.width) - math.max(left, detail.x))
+        local overlap_y = math.max(0, math.min(top + frame.cell_height, detail.y + detail.height) - math.max(top, detail.y))
+        local area = overlap_x * overlap_y
+        if area > 0 and (not covered or area > covered or area == covered and detail.start_line > hit.start_line) then
+          hit, covered = detail, area
+        end
+      end
+      if hit then request_detail(hit.id) end
+      if s.mode == "split" and api.nvim_win_is_valid(source_win) then api.nvim_set_current_win(source_win) end
+    end)
+  end, s.mouse_namespace)
   if mode == "replace" then
     local function cell_h()
       return (cell and cell.cell_height and cell.cell_height > 0 and cell.cell_height) or 18
@@ -742,6 +881,33 @@ function M.open(mode)
     map("]]", function() heading_nav(true) end, "Next heading")
     map("[[", function() heading_nav(false) end, "Previous heading")
 
+    local function navigate_detail(forward)
+      if not s.loaded then return end
+      local ordered = vim.tbl_values(s.details)
+      table.sort(ordered, function(a, b) return a.y == b.y and a.id < b.id or a.y < b.y end)
+      local selected = s.selected_detail ~= nil and s.details[s.selected_detail]
+      local y = selected and selected.y or (s.frame and s.frame.y or s.current_y or 0)
+      local next_detail
+      if forward then
+        for _, detail in ipairs(ordered) do
+          if detail.y > y + (selected and 0.5 or -0.5) then next_detail=detail; break end
+        end
+      else
+        for i=#ordered, 1, -1 do
+          if ordered[i].y < y - 0.5 then next_detail=ordered[i]; break end
+        end
+      end
+      if not next_detail then return detail_notice("No " .. (forward and "next" or "previous") .. " details block") end
+      s.selected_detail=next_detail.id
+      scroll_to(next_detail.y)
+      safe_pump()
+    end
+    map("]d", function() navigate_detail(true) end, "Select next details block")
+    map("[d", function() navigate_detail(false) end, "Select previous details block")
+    map("za", function()
+      if s.selected_detail == nil or not s.details[s.selected_detail] then return detail_notice("No details block selected") end
+      request_detail(s.selected_detail)
+    end, "Toggle selected details block")
     map("t", function()
       local lines = api.nvim_buf_get_lines(source_buf, 0, -1, false)
       local items = {}
@@ -800,6 +966,16 @@ function M.open(mode)
     map("N", function() search_step(false) end, "Previous search match")
   end
   safe_pump()
+end
+
+function M.toggle_detail()
+  local s = session
+  if not s or s.mode ~= "split" or not api.nvim_win_is_valid(s.source_win) then
+    return vim.notify("mdview: Open a split preview to toggle a source details block", vim.log.levels.INFO)
+  end
+  local detail = s.detail_at_line(api.nvim_win_get_cursor(s.source_win)[1])
+  if not detail then return vim.notify("mdview: No details block at the source cursor", vim.log.levels.INFO) end
+  s.toggle_detail(detail.id)
 end
 
 function M.toggle(mode) if session then M.close() else M.open(mode) end end

@@ -36,6 +36,7 @@ nvim --headless -u NONE -l tests/plugin.lua
 nvim --headless -u NONE -l tests/theme.lua
 nvim --headless -u NONE -l tests/cursor.lua
 nvim --headless -u NONE -l tests/alerts.lua
+nvim --headless -u NONE -l tests/details.lua
 ```
 
 The optional real-Merman check additionally needs the explicitly built evaluation
@@ -65,6 +66,29 @@ nvim --headless -u NONE -l tests/mermaid.lua
 - `mermaid.lua` exercises actual Merman/native rendering, independent image pixel
   comparison, two-diagram navigation, unsaved changes, invalid input/recovery,
   latest revision, cursor-follow, height/width changes, palettes and cancellation.
+- `details.lua` compares plain/attributed PNG pixels at 360/700 px and exercises
+  nested/default-open blocks, hidden-line anchors, reader selection through
+  scrolling, independent height changes, split innermost cursor toggles,
+  unique-state preservation across edits/resize/palette, changed-block reset,
+  rapid opposite toggles without stale frames, malformed-summary fallback and
+  same-worker correction, session reset and `html=false` rejection; live image
+  display and terminal cell sizes are mocked.
+
+The first-click mouse regression requires an actual Neovim TUI/PTY (not headless)
+and mocks only image display and Kitty transport:
+
+```bash
+TERM=xterm-256color nvim -u tests/details_mouse.lua
+TERM=xterm-256color MDVIEW_MOUSE_RAW=1 nvim -u tests/details_mouse.lua
+TERM=xterm-256color MDVIEW_MOUSE_MODE=replace nvim -u tests/details_mouse.lua
+TERM=xterm-256color MDVIEW_MOUSE_MODE=replace MDVIEW_MOUSE_RAW=1 nvim -u tests/details_mouse.lua
+```
+
+It scrolls to a nonzero document offset, sends a click outside a header, then
+a click on the last visible cell row of a wrapped header. Split starts with
+source focus and restores it; reader keeps preview focus. The test checks
+unchanged Markdown bytes. These are decoded Neovim mouse events, not real
+Kitty pointer delivery or visual composition.
 
 These checks do **not** prove Kitty composition, physical touchpad smoothness or
 support for arbitrary Markdown. Run `tests/plugin.lua` and `tests/smoke.sh` before
@@ -73,9 +97,10 @@ committing; run additional checks for affected features.
 ## Closed HTML subset
 
 The production worker enables a closed, sanitized HTML allowlist by default:
-`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments and local
-`img src`/`alt`. Supplied attributes are discarded other than image `src` and
-`alt`; `span` is unwrapped. Unsupported or malformed fragments are escaped as
+`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
+`img src`/`alt`, and structured `details`/`summary` pairs. Supplied attributes
+are discarded other than image `src` and `alt`; `<b>` is summary-only and `span`
+is unwrapped. Unsupported or malformed fragments are escaped as
 literal source with line/column diagnostics, not passed through as raw HTML and
 not allowed to abort unrelated content. `setup({html=false})` opts back into
 explicit raw-HTML rejection.
@@ -110,11 +135,33 @@ heading; the original remote image remains unavailable and is not fetched.
 flowchart, subsequent text, and an independently failing malformed ER diagram.
 
 Excluded scope includes arbitrary HTML, SVG local images, image width/height
-attributes, HTML tables, `details`/`summary`, `picture`/`source`, links and remote
-resources. The policy and evidence distinction are recorded in
+attributes, HTML tables, `picture`/`source`, HTML links and remote resources.
+Interactive details support is separately documented in
+[configuration](configuration.md#interactive-details); the historical HTML
+policy and evidence distinction are in
 [`pre-release.md`](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
 
 
+
+### Interactive details — Kitty acceptance pending
+
+```bash
+bash scripts/manual-details replace
+bash scripts/manual-details split
+# Optional: test a real document, or local raw RGBA transport.
+MDVIEW_MANUAL_RAW=1 bash scripts/manual-details split /absolute/document.md
+```
+
+The default fixture has nested disclosures, a long wrapping header, a local
+image and an alert. In reader click each visible header, select with `]d`/`[d`,
+toggle with `za`, scroll away/back, and check `<CR>` still returns to source.
+In split use `:MdViewToggleDetail` with cursor inside the inner block and on
+outside text; click a header, resize narrowly, edit without saving, and reopen.
+Check open-by-default state, heading/anchor position, no blank space after close,
+and both PNG and `MDVIEW_MANUAL_RAW=1` paths. The launcher keeps normal Kitty
+configuration and does not change user dotfiles. Native PNG inspection, the
+PTY TUI regression with mocked image output, and headless/controller checks
+are not real Kitty visual acceptance.
 
 ## Manual Kitty checks
 

@@ -21,9 +21,19 @@ using Clock = std::chrono::steady_clock;
 struct Position { int line, column; };
 struct Label { std::string text; std::vector<Position> positions; };
 struct Fragment { int line, column, end; double y; double block_bottom = 0; double bottom = 0; };
+struct Detail { int start, end = 0, header = 0; bool open = true; int parent = -1; litehtml::position box; bool visible = false, title = false; };
 static std::vector<std::pair<Position, Position>> html_comments;
 static int html_root_label = -1;
-static const Fragment* source_fragment(const std::vector<Fragment>& fragments, int line, int col) {
+static const Fragment* source_fragment(const std::vector<Fragment>& fragments, const std::vector<Detail>& details, int line, int col) {
+    for (const auto& detail : details) {
+        if (!detail.visible || detail.open || line <= detail.header || line > detail.end) continue;
+        bool hidden_by_parent = false;
+        for (int parent = detail.parent; parent >= 0; parent = details[parent].parent)
+            if (!details[parent].open) hidden_by_parent = true;
+        if (hidden_by_parent) continue;
+        for (const auto& fragment : fragments)
+            if (fragment.line == detail.header && fragment.y == detail.box.y) return &fragment;
+    }
     auto less = [](Position a, Position b) { return a.line < b.line || (a.line == b.line && a.column < b.column); };
     const Position query{line, col};
     for (const auto& range : html_comments) {
@@ -89,6 +99,7 @@ static double elapsed(Clock::time_point t) {
 class Markdown {
     std::vector<std::string> lines;
     std::vector<Label> labels;
+    std::vector<Detail> details;
     MermaidRenderer* mermaid = nullptr;
     // Decode entities with the same parser that supplied the authoritative literal.
     static std::string entity(const std::string& value) {
@@ -365,8 +376,9 @@ class Markdown {
         }
     }
 public:
+    std::vector<Detail>& get_details() { return details; }
     std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false, bool html_enabled = true) {
-        lines.clear(); labels.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
+        lines.clear(); labels.clear(); details.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
         cmark_gfm_core_extensions_ensure_registered();
@@ -411,8 +423,20 @@ public:
             return html;
         } catch (...) { cmark_node_free(root); cmark_parser_free(parser); throw; }
     }
-    void collect(const std::shared_ptr<litehtml::render_item>& node, int id, std::map<int,size_t>& offsets, std::vector<Fragment>& fragments, int image_line = 0) const {
+    void collect(const std::shared_ptr<litehtml::render_item>& node, int id, std::map<int,size_t>& offsets, std::vector<Fragment>& fragments, int image_line = 0) {
         if (!node->is_visible()) return;
+        // The generated disclosure glyph has no source bytes to attribute.
+        if (node->src_el()->get_attr("data-mdview-detail-indicator")) return;
+        if (auto own = node->src_el()->get_attr("data-mdview-detail")) {
+            auto& detail = details.at(std::stoi(own));
+            detail.box = node->get_placement();
+            detail.visible = true;
+            const double y = detail.box.y, bottom = detail.box.y + detail.box.height;
+            fragments.push_back({detail.start, 0, 0, y, 0, bottom});
+            fragments.push_back({detail.header, 0, 0, y, 0, bottom});
+            if (!detail.open) for (int line = detail.header+1; line <= detail.end; ++line)
+                fragments.push_back({line, 0, 0, y, 0, bottom});
+        }
         if (auto own = node->src_el()->get_attr("data-mdview-break")) {
             const auto placement = node->get_placement();
             const int line = std::stoi(own), column = std::stoi(node->src_el()->get_attr("data-mdview-break-column"));
@@ -459,6 +483,33 @@ static std::string document_html(const std::string& body, const std::string& css
     const auto metadata = html_root_label < 0 ? std::string() : " data-mdview=\"" + std::to_string(html_root_label) + "\"";
     return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" + css + "</style></head><body><main class=\"markdown-body\"" + metadata + ">" + body + "</main></body></html>";
 }
+static std::string details_html(std::string html, const std::vector<Detail>& details) {
+    for (size_t id = 0; id < details.size(); ++id) {
+        if (!details[id].end || details[id].open) continue;
+        const auto key = std::to_string(id);
+        const auto indicator = "data-mdview-detail-indicator=\"" + key + "\">▾";
+        const auto body = "data-mdview-detail-body=\"" + key + "\">";
+        auto index = html.find(indicator);
+        if (index == std::string::npos) throw std::runtime_error("Cannot locate detail indicator");
+        html.replace(index, indicator.size(), "data-mdview-detail-indicator=\"" + key + "\">▸");
+        index = html.find(body);
+        if (index == std::string::npos) throw std::runtime_error("Cannot locate detail body");
+        html.replace(index, body.size(), "data-mdview-detail-body=\"" + key + "\" style=\"display:none\">");
+    }
+    return html;
+}
+static void emit_geometry(const std::vector<Fragment>& fragments, const std::vector<Detail>& details) {
+    for (const auto& f : fragments) std::cout << "FRAG " << f.line << ' ' << f.column << ' ' << f.end << ' ' << f.y << '\n';
+    for (size_t id = 0; id < details.size(); ++id) {
+        const auto& detail = details[id];
+        if (!detail.end) continue;
+        const auto& box = detail.box;
+        std::cout << "DETAIL " << id << ' ' << detail.start << ' ' << detail.end << ' '
+            << (detail.visible ? box.x : 0) << ' ' << (detail.visible ? box.y : 0) << ' '
+            << (detail.visible ? box.width : 0) << ' ' << (detail.visible ? box.height : 0) << ' '
+            << detail.open << '\n';
+    }
+}
 // Do not fetch remote resources. Decode local URLs safely (the upstream adapter assumes valid %xx).
 class Container : public mdview::OcticonContainer {
     const MermaidRenderer* mermaid;
@@ -502,6 +553,7 @@ int main(int argc, char** argv) {
     std::unique_ptr<Container> container;
     litehtml::document::ptr doc;
     std::vector<Fragment> fragments;
+    std::string layout_html, base_path;
     int revision = 0, width = 0;
     for (std::string request; std::getline(std::cin, request);) {
         try {
@@ -531,45 +583,78 @@ int main(int argc, char** argv) {
                 auto t = Clock::now();
                 html_images::configure(unhex(base), unhex(snapshot));
                 auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts, html_enabled);
-                auto html = document_html(body, read_file(unhex(css)));
+                layout_html = document_html(body, read_file(unhex(css)));
+                base_path = unhex(base);
                 converter = std::make_unique<html2png::converter>(w, 800, 96.0, "sans-serif");
-                container = std::make_unique<Container>(unhex(base), converter.get(), &mermaid);
-                doc = litehtml::document::createFromString(html, container.get());
+                container = std::make_unique<Container>(base_path, converter.get(), &mermaid);
+                doc = litehtml::document::createFromString(layout_html, container.get());
                 if (!doc) throw std::runtime_error("Cannot create layout");
                 doc->render(w);
                 html_images::context.decoding = false;
                 std::map<int,size_t> offsets;
+                for (auto& detail : markdown.get_details()) detail.visible = false;
                 markdown.collect(doc->root_render(), -1, offsets, fragments);
                 revision = rev; width = w;
-                for (const auto& f : fragments) std::cout << "FRAG " << f.line << ' ' << f.column << ' ' << f.end << ' ' << f.y << '\n';
+                emit_geometry(fragments, markdown.get_details());
+                std::cout << "READY " << revision << ' ' << width << ' ' << doc->height() << ' ' << elapsed(t) << '\n';
+            } else if (op == "TOGGLE") {
+                int rev = 0, id = -1, open = -1;
+                std::string extra;
+                if (!(input >> rev >> id >> open) || input >> extra || !doc || rev <= revision
+                    || id < 0 || id >= static_cast<int>(markdown.get_details().size())
+                    || !markdown.get_details()[id].end || (open != 0 && open != 1))
+                    throw std::runtime_error("Invalid TOGGLE request");
+                auto t = Clock::now();
+                markdown.get_details()[id].open = open;
+                auto next = litehtml::document::createFromString(details_html(layout_html, markdown.get_details()), container.get());
+                if (!next) throw std::runtime_error("Cannot create detail layout");
+                next->render(width);
+                std::vector<Fragment> next_fragments;
+                std::map<int,size_t> offsets;
+                for (auto& detail : markdown.get_details()) detail.visible = false;
+                markdown.collect(next->root_render(), -1, offsets, next_fragments);
+                doc = std::move(next);
+                fragments = std::move(next_fragments);
+                revision = rev;
+                emit_geometry(fragments, markdown.get_details());
                 std::cout << "READY " << revision << ' ' << width << ' ' << doc->height() << ' ' << elapsed(t) << '\n';
             } else if (op == "DRAW") {
                 int rev=0, seq=0, line=0, col=0, botline=0, height=0; std::string output;
                 if (!(input >> rev >> seq >> line >> col >> botline >> height >> output) || rev != revision || !doc || line < 0 || col < 0 || height < 1 || height > 8192) throw std::runtime_error("Invalid DRAW request");
-                int cursor_line=0, cursor_col=0, through_line=0, previous_top=-1;
-                input >> std::ws;
-                const bool reveal = !input.eof();
-                if (reveal) {
-                    std::string extra;
-                    if (!(input >> cursor_line >> cursor_col >> through_line >> previous_top)
-                        || cursor_line < 0 || cursor_col < 0 || through_line < cursor_line || previous_top < -1
-                        || input >> extra) throw std::runtime_error("Invalid cursor reveal request");
+                int cursor_line=0, cursor_col=0, through_line=0, previous_top=-1, selected=-1;
+                std::vector<int> tail;
+                std::string value;
+                while (input >> value) {
+                    std::istringstream number(value);
+                    int n; char rest;
+                    if (!(number >> n) || number >> rest) throw std::runtime_error("Invalid DRAW options");
+                    tail.push_back(n);
                 }
+                const bool reveal = tail.size() == 4 || tail.size() == 5;
+                if (tail.size() != 0 && tail.size() != 1 && !reveal) throw std::runtime_error("Invalid DRAW options");
+                if (reveal) {
+                    cursor_line = tail[0]; cursor_col = tail[1]; through_line = tail[2]; previous_top = tail[3];
+                    if (cursor_line < 0 || cursor_col < 0 || through_line < cursor_line || previous_top < -1)
+                        throw std::runtime_error("Invalid cursor reveal request");
+                }
+                if (tail.size() == 1 || tail.size() == 5) selected = tail.back();
+                if (selected < -1 || selected >= static_cast<int>(markdown.get_details().size()))
+                    throw std::runtime_error("Invalid selected detail");
                 int top = 0;
                 if (line == 0) {
                     top = std::max(0, col);
                 } else if (line > 1) {
-                    if (const auto* f = source_fragment(fragments, line, col))
+                    if (const auto* f = source_fragment(fragments, markdown.get_details(), line, col))
                         top = std::max(0, static_cast<int>(std::floor(f->y)));
                 }
                 if (reveal) {
                     if (previous_top >= 0) top = previous_top;
                     if (cursor_line > 0) {
-                        if (const auto* active = source_fragment(fragments, cursor_line, cursor_col)) {
+                        if (const auto* active = source_fragment(fragments, markdown.get_details(), cursor_line, cursor_col)) {
                             double first = active->y;
                             double last = std::max({first, active->bottom, active->block_bottom});
                             if (through_line > cursor_line) {
-                                if (const auto* end = source_fragment(fragments, through_line, 0)) {
+                                if (const auto* end = source_fragment(fragments, markdown.get_details(), through_line, 0)) {
                                     last = std::max({last, end->y, end->bottom, end->block_bottom});
                                     // Prefer the diagram if heading + graph cannot fit together.
                                     if (end->block_bottom > 0 && std::ceil(last) - std::floor(first) > height) first = end->y;
@@ -607,6 +692,19 @@ int main(int argc, char** argv) {
                 }
                 litehtml::position clip(0, 0, width, clip_height);
                 doc->draw(reinterpret_cast<litehtml::uint_ptr>(cr), 0, -top, &clip);
+                if (selected >= 0 && markdown.get_details()[selected].visible) {
+                    const auto& box = markdown.get_details()[selected].box;
+                    cairo_save(cr);
+                    cairo_rectangle(cr, 0, 0, width, clip_height);
+                    cairo_clip(cr);
+                    cairo_rectangle(cr, box.x, box.y - top, box.width, box.height);
+                    cairo_set_source_rgba(cr, 0.35, 0.65, 1.0, 0.16);
+                    cairo_fill_preserve(cr);
+                    cairo_set_source_rgba(cr, 0.35, 0.65, 1.0, 0.9);
+                    cairo_set_line_width(cr, 2.0);
+                    cairo_stroke(cr);
+                    cairo_restore(cr);
+                }
                 auto draw_status = cairo_status(cr);
                 cairo_destroy(cr);
                 auto out_path = unhex(output);

@@ -8,6 +8,7 @@ struct HtmlToken {
     bool has_src = false;
     bool closing = false, self = false, valid = true;
     int group = -1;
+    int detail = -1;
 };
 struct HtmlRaw {
     cmark_node* node;
@@ -20,7 +21,8 @@ struct HtmlGroup { bool valid = true; Position start{1, 0}; std::string reason; 
 static bool html_space(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'; }
 static bool html_letter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 static bool html_allowed(const std::string& name) {
-    return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div";
+    return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
+        || name == "details" || name == "summary" || name == "b";
 }
 static std::string html_attribute(const std::string& value) {
     std::string out;
@@ -384,57 +386,113 @@ void sanitize_html(cmark_node* root, bool marked) {
     };
     diagnose_text(diagnose_text, root);
     std::vector<HtmlGroup> groups;
-    struct Open { std::string name; int group; };
+    struct Open { std::string name; int group; int detail = -1; };
     std::vector<Open> stack;
     auto fail = [&](int group, const char* reason) {
         groups[group].valid = false;
         if (groups[group].reason.empty()) groups[group].reason = reason;
     };
-    for (auto& raw : raws) for (auto& token : raw.tokens) {
-        int group = stack.empty() ? -1 : stack.front().group;
-        if (group < 0 && token.kind != HtmlToken::text) {
-            group = static_cast<int>(groups.size()); groups.push_back({true, raw.positions[token.begin], {}});
-        }
-        token.group = group;
-        if (token.kind == HtmlToken::text) continue;
-        if (token.kind == HtmlToken::tag && token.name == "img") {
-            if (!token.valid || token.closing || !token.has_src) token.image_error = "malformed img or missing src";
+    for (const auto& event : events) {
+        if (event.text) {
+            if (!stack.empty() && stack.back().name == "details" && stack.back().detail >= 0
+                && !details[stack.back().detail].header
+                && std::string(cmark_node_get_literal(event.text)).find_first_not_of(" \t\r\n") != std::string::npos)
+                fail(stack.back().group, "summary must be the first details child");
+            if (!stack.empty() && (stack.back().name == "summary" || stack.back().name == "b")
+                && stack.back().detail >= 0
+                && std::string(cmark_node_get_literal(event.text)).find_first_not_of(" \t\r\n") != std::string::npos)
+                details[stack.back().detail].title = true;
             continue;
         }
-        if (!token.valid) { fail(group, token.kind == HtmlToken::comment ? "unclosed comment" : "unsupported or malformed HTML"); continue; }
-        if (token.kind == HtmlToken::comment) continue;
-        if (token.closing) {
-            if (token.name == "br" || stack.empty() || stack.back().name != token.name) {
-                fail(group, "invalid HTML nesting");
-                groups[group].start = raw.positions[token.begin];
-                groups[group].reason = "invalid HTML nesting";
-                // A crossing close terminates its open frame, but invalidates its whole outer fragment.
-                auto found = std::find_if(stack.rbegin(), stack.rend(), [&](const Open& open) { return open.name == token.name; });
-                if (found != stack.rend()) stack.resize(static_cast<size_t>(stack.rend()-found-1));
-            } else stack.pop_back();
-        } else if (token.name != "br") {
-            if (token.name == "p" || token.name == "div") {
-                for (const auto& open : stack) if (open.name != "div") fail(group, "invalid block nesting");
+        auto& raw = raws[event.raw];
+        for (auto& token : raw.tokens) {
+            int group = stack.empty() ? -1 : stack.front().group;
+            if (group < 0 && token.kind != HtmlToken::text) {
+                group = static_cast<int>(groups.size()); groups.push_back({true, raw.positions[token.begin], {}});
             }
-            stack.push_back({token.name, group});
+            token.group = group;
+            if (token.kind == HtmlToken::text) {
+                const auto text = raw.literal.substr(token.begin, token.end-token.begin);
+                if (!stack.empty() && stack.back().name == "details" && stack.back().detail >= 0
+                    && !details[stack.back().detail].header
+                    && text.find_first_not_of(" \t\r\n") != std::string::npos)
+                    fail(group, "summary must be the first details child");
+                if (!stack.empty() && (stack.back().name == "summary" || stack.back().name == "b")
+                    && stack.back().detail >= 0 && text.find_first_not_of(" \t\r\n") != std::string::npos)
+                    details[stack.back().detail].title = true;
+                continue;
+            }
+            if (token.kind == HtmlToken::tag && token.name == "img") {
+                if (!stack.empty() && (stack.back().name == "summary"
+                    || (stack.back().name == "details" && !details[stack.back().detail].header)))
+                    fail(group, "unsupported image before or inside summary");
+                if (!token.valid || token.closing || !token.has_src) token.image_error = "malformed img or missing src";
+                continue;
+            }
+            if (!token.valid) { fail(group, token.kind == HtmlToken::comment ? "unclosed comment" : "unsupported or malformed HTML"); continue; }
+            if (token.kind == HtmlToken::comment) continue;
+            if (token.name == "b" && (stack.empty() || (stack.back().name != "summary" && stack.back().name != "b"))) {
+                fail(group, "b is only allowed inside summary");
+                continue;
+            }
+            if (token.name == "br" && !stack.empty()
+                && (stack.back().name == "summary"
+                    || (stack.back().name == "details" && !details[stack.back().detail].header)))
+                fail(group, "unsupported break before or inside summary");
+            if (token.closing) {
+                if (token.name == "br" || stack.empty() || stack.back().name != token.name) {
+                    fail(group, "invalid HTML nesting");
+                    groups[group].start = raw.positions[token.begin];
+                    groups[group].reason = "invalid HTML nesting";
+                    auto found = std::find_if(stack.rbegin(), stack.rend(), [&](const Open& open) { return open.name == token.name; });
+                    if (found != stack.rend()) stack.resize(static_cast<size_t>(stack.rend()-found-1));
+                } else {
+                    const auto open = stack.back();
+                    token.detail = open.detail;
+                    if (token.name == "summary" && open.detail >= 0) {
+                        auto& detail = details[open.detail];
+                        if (!detail.title) fail(group, "missing or empty summary");
+                    } else if (token.name == "details") {
+                        if (!details[open.detail].header) fail(group, "missing or empty summary");
+                        details[open.detail].end = raw.positions[token.end-1].line;
+                    }
+                    stack.pop_back();
+                }
+            } else if (token.name != "br") {
+                if (token.name == "details") {
+                    if (!stack.empty() && ((stack.back().name == "details" && !details[stack.back().detail].header)
+                        || stack.back().name == "summary" || stack.back().name == "b"))
+                        fail(group, "details cannot precede or occur inside summary");
+                    int parent = -1;
+                    for (auto it = stack.rbegin(); it != stack.rend(); ++it)
+                        if (it->name == "details") { parent = it->detail; break; }
+                    token.detail = static_cast<int>(details.size());
+                    details.emplace_back();
+                    details.back().start = raw.positions[token.begin].line;
+                    details.back().parent = parent;
+                } else if (token.name == "summary") {
+                    if (stack.empty() || stack.back().name != "details" || details[stack.back().detail].header)
+                        fail(group, "summary must be the first details child");
+                    else {
+                        token.detail = stack.back().detail;
+                        details[token.detail].header = raw.positions[token.begin].line;
+                    }
+                } else if (token.name != "b" && stack.size() && (stack.back().name == "summary" || stack.back().name == "b")) {
+                    fail(group, "unsupported tag inside summary");
+                } else if (token.name == "p" || token.name == "div") {
+                    for (const auto& open : stack) if (open.name != "div" && open.name != "details")
+                        fail(group, "invalid block nesting");
+                } else if (stack.size() && stack.back().name == "details" && !details[stack.back().detail].header)
+                    fail(group, "summary must be the first details child");
+                if (token.name == "b") token.detail = stack.back().detail;
+                stack.push_back({token.name, group, token.detail});
+            }
         }
     }
     for (const auto& open : stack) fail(open.group, "unclosed HTML tag");
-    // A raw block is opaque to cmark: on error retain its entire original literal.
-    // Propagate to shared groups so no half-open sanitized wrapper survives in another node.
-    bool changed;
-    do {
-        changed = false;
-        for (auto& raw : raws) {
-            if (!raw.block) continue;
-            bool invalid = false;
-            for (const auto& token : raw.tokens) if (token.group >= 0 && !groups[token.group].valid) invalid = true;
-            if (!invalid) continue;
-            for (const auto& token : raw.tokens) if (token.group >= 0 && groups[token.group].valid) {
-                fail(token.group, "invalid opaque HTML fragment"); changed = true;
-            }
-        }
-    } while (changed);
+    for (const auto& raw : raws) for (const auto& token : raw.tokens)
+        if (token.detail >= 0 && token.name == "details" && token.group >= 0 && !groups[token.group].valid)
+            details[token.detail].end = 0;
     for (const auto& group : groups) if (!group.valid)
         std::cerr << "HTML subset at " << group.start.line << ':' << group.start.column+1 << ": " << group.reason << '\n';
     // Only surviving img tokens may reach the local decoder. Invalid wrappers stay opaque.
@@ -483,9 +541,11 @@ void sanitize_html(cmark_node* root, bool marked) {
         }
         const auto& raw = raws[event.raw];
         const int raw_owner = owner() >= 0 ? owner() : html_fallback_owner(raw.node);
-        bool invalid_block = false;
-        if (raw.block) for (const auto& token : raw.tokens)
-            if (token.group >= 0 && !groups[token.group].valid) invalid_block = true;
+        bool invalid_block = false, valid_block_group = false;
+        if (raw.block) for (const auto& token : raw.tokens) if (token.group >= 0) {
+            if (!groups[token.group].valid) invalid_block = true;
+            else valid_block_group = true;
+        }
         // Standalone images use the same paragraph geometry as Markdown images.
         // Explicit HTML containers keep their own semantics.
         bool image_paragraph = raw.block && !invalid_block;
@@ -499,10 +559,11 @@ void sanitize_html(cmark_node* root, bool marked) {
         }
         image_paragraph = image_paragraph && has_image;
         std::string html;
-        if (invalid_block) html = html_text(raw, 0, raw.literal.size(), false, marked, html_root_label);
+        if (invalid_block && !valid_block_group) html = html_text(raw, 0, raw.literal.size(), false, marked, html_root_label);
         else for (const auto& token : raw.tokens) {
             if (token.group >= 0 && !groups[token.group].valid) {
-                html += html_text(raw, token.begin, token.end, false, marked, raw_owner); continue;
+                html += html_text(raw, token.begin, token.end, false, marked,
+                    raw.block ? html_root_label : raw_owner); continue;
             }
             if (token.kind == HtmlToken::comment) {
                 html_comments.push_back({raw.positions[token.begin], raw.positions[token.end-1]});
@@ -510,6 +571,17 @@ void sanitize_html(cmark_node* root, bool marked) {
             }
             if (token.kind == HtmlToken::text) {
                 html += html_text(raw, token.begin, token.end, true, marked, owner() >= 0 ? owner() : html_fallback_owner(raw.node));
+                continue;
+            }
+            if (token.name == "details" || token.name == "summary" || token.name == "b") {
+                if (token.name == "details")
+                    html += token.closing ? "</div></div>" : "<div class=\"mdview-detail\">";
+                else if (token.name == "summary") {
+                    const auto id = std::to_string(token.detail);
+                    if (token.closing) html += "</div><div class=\"mdview-detail-body\" data-mdview-detail-body=\"" + id + "\">";
+                    else html += "<div class=\"mdview-detail-header\" data-mdview-detail=\"" + id
+                        + "\"><span class=\"mdview-detail-indicator\" data-mdview-detail-indicator=\"" + id + "\">▾</span>";
+                } else html += token.closing ? "</strong>" : "<strong>";
                 continue;
             }
             if (token.name == "img") {

@@ -16,3 +16,6 @@ for _, entry in ipairs(commands) do
     desc = "Markdown preview: " .. action,
   })
 end
+vim.api.nvim_create_user_command("MdViewToggleDetail", function()
+  require("mdview").toggle_detail()
+end, {desc="Toggle the innermost details block at the source cursor"})

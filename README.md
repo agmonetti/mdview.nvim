@@ -53,7 +53,7 @@ return {
   {
     dir = "/absolute/path/to/mdview.nvim",
     name = "mdview.nvim",
-    cmd = { "MdView", "MdViewOpen", "MdViewClose" },
+    cmd = { "MdView", "MdViewOpen", "MdViewClose", "MdViewToggleDetail" },
     dependencies = { "3rd/image.nvim" },
     build = false, -- built explicitly above
     config = function()
@@ -77,6 +77,7 @@ Open a Markdown buffer, then:
 | `:MdViewOpen replace` | Open the reader in the source window. |
 | `:MdViewOpen split` | Keep source on the left and preview on the right. |
 | `:MdViewClose` | Close the preview and restore the source window. |
+| `:MdViewToggleDetail` | In split, toggle the innermost details block under the source cursor. |
 
 The preview reads unsaved buffer contents without writing the Markdown file.
 Local images resolve relative to that file. Edits and width changes rebuild
@@ -91,11 +92,19 @@ session is supported at a time.
 | `d` / `u`, `Ctrl-d` / `Ctrl-u` | Scroll half a page. |
 | `Space` / `b`, `Ctrl-f` / `Ctrl-b` | Scroll a page down/up. |
 | `gg` / `G` | Go to the beginning/end. |
+| `]d` / `[d` | Select the next/previous HTML details header; selection is highlighted. |
+| `za` | Toggle the selected details block; without a selection, report a no-op. |
 | `e` / `Enter` | Return to the source near the current reading position. |
 | `q` / `Esc` | Close the reader. |
 
 After editing, use `:MdViewOpen replace` to reopen the reader. In split mode,
 edit and navigate the source normally; the preview follows it.
+With HTML enabled, sanitized `<details>` blocks open by default. Click a header
+in either preview mode to fold/unfold it; clicking elsewhere does not toggle it.
+The split command does not change Markdown buffer mappings. Fold state is
+session-local and resets on close/reopen; unique unchanged blocks retain state
+across edits, width changes and palette reloads. Collapsed source lines navigate
+to their header. The raster does not provide clickable links.
 
 ## Configuration
 
@@ -161,15 +170,20 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 ## Closed HTML subset
 
 The preview enables a deliberately small, sanitized HTML subset by default:
-`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, and local
-`img` elements with `src`/`alt`. Unsupported or malformed fragments are shown as
-escaped literal text with a source-position diagnostic; they do not abort the
-document. User-supplied attributes are discarded except image `src` and `alt`.
-Remote `https://...` images are shown as literal `<img>` text, not fetched.
+`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
+`img` elements with `src`/`alt`, and structured `details`/`summary` pairs.
+Inside a summary only, `<b>` is also allowed. Unsupported or malformed
+fragments are shown as escaped literal text with a source-position diagnostic;
+they do not abort the document. User-supplied attributes are discarded except
+image `src` and `alt`. Remote `https://...` images remain literal, not fetched.
 For example, `<img src="assets/banner.png" alt="Banner">` renders a local
 file relative to the Markdown document; the same tag with a remote `src`
 does not render an image. Image `width`/`height` attributes are not applied.
-SVG, HTML tables, links and arbitrary HTML are not included.
+SVG, HTML tables, HTML links and arbitrary HTML are not included.
+
+Markdown in a details body follows cmark's HTML-block rules: leave a blank line
+after `</summary>` before headings or lists, or they may remain literal text.
+Missing/empty summaries and invalid nesting fall back to escaped text.
 
 Disable raw HTML explicitly with `require("mdview").setup({ html = false })`;
 Markdown images keep their existing loader and format behavior. See the

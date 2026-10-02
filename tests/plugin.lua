@@ -45,12 +45,11 @@ local function check()
   end
   local subset=directory .. "/html-subset.md"
   vim.fn.writefile({"<p>safe <kbd>kbd</kbd><br>next <sup>2</sup> <span>plain</span></p>", "",
-    "<details><summary>literal</summary></details>", "", "<kbd>broken", "", "# HTML tail"}, subset)
+    "<kbd>broken", "", "# HTML tail"}, subset)
   local html_default=command({root .. "/build/mdview-preview", "--html", subset, root .. "/styles/markdown.css", "marked"})
   assert(html_default:find("<kbd",1,true) and html_default:find("<br",1,true)
-    and html_default:find("<sup",1,true) and html_default:find("&lt;details&gt;",1,true)
-    and html_default:find("&lt;kbd&gt;broken",1,true)
-    and not html_default:find("<details>",1,true), "closed HTML subset or localized literal fallback")
+    and html_default:find("<sup",1,true)
+    and html_default:find("&lt;kbd&gt;broken",1,true), "closed HTML subset or localized literal fallback")
   local disabled=vim.system({root .. "/build/mdview-preview", "--html", subset, root .. "/styles/markdown.css", "plain", "html=0"},
     {text=true}):wait()
   assert(disabled.code~=0 and disabled.stderr:find("Raw HTML",1,true), "html=0 did not restore raw HTML rejection")

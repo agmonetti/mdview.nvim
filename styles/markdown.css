@@ -36,3 +36,8 @@ th, td { border: 1px solid #30363d; padding: 8px 14px; text-align: left; }
 th { font-weight: 600; background-color: #161b22; }
 hr { border: 0; border-top: 1px solid #30363d; margin: 24px 0; }
 img { max-width: 100%; }
+.mdview-detail { margin: 0 0 20px; border: 1px solid #30363d; border-radius: 6px; }
+.mdview-detail-header { padding: 8px 12px; background-color: #161b22; color: #e6edf3; line-height: 1.5; }
+.mdview-detail-indicator { display: inline-block; width: 20px; color: #8b949e; }
+.mdview-detail-body { padding: 12px 16px 0; }
+.mdview-detail-body > :last-child { margin-bottom: 12px; }

@@ -136,12 +136,13 @@ ordinary quote fails without alerts; two-space hard breaks are regression-covere
 
 Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
 closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete
-`<!-- comments -->`, and `<img src="local/path" alt="...">`. Wrappers and text are
-rendered without user attributes; only local image `src` and `alt` are retained.
-`span` is unwrapped. Unsupported/malformed tags, invalid nesting, incomplete
-comments and unusable HTML images are escaped as literal source with localized
-stderr diagnostics, so unrelated document content remains visible. `html=false`
-restores the former document-level raw-HTML error for users who need that policy.
+`<!-- comments -->`, local `<img src="local/path" alt="...">`, and structured
+`<details>` with a nonempty first direct `<summary>`. `<b>` is allowed only inside
+summary. Wrappers and text discard user attributes; only local image `src` and
+`alt` survive. `span` is unwrapped. Unsupported/malformed tags, invalid nesting,
+incomplete comments and unusable HTML images are escaped as literal source with
+localized stderr diagnostics, so unrelated document content remains visible.
+`html=false` restores the document-level raw-HTML error.
 
 HTML images are local only and accept PNG, JPEG, static GIF, BMP and static WebP
 when the installed decoder supports them. SVG, animation, remote/file/data URLs,
@@ -152,10 +153,33 @@ policy limits do not cap every decoder allocation or constitute a sandbox.
 Markdown images continue through the existing production loader unchanged; the
 HTML-specific allowlist/budgets do not narrow their supported formats or behavior.
 
-Width/height controls, HTML tables, links, `details`/`summary`, `picture`/`source`,
-SVG and remote resources are outside this selection. See the [development
-notes](development.md#closed-html-subset) and the
+Width/height controls, HTML tables, HTML links, `picture`/`source`, SVG and
+remote resources remain outside this selection. See the
+[development notes](development.md#closed-html-subset) and
 [agreed scope](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
+
+### Interactive details
+
+Every valid details block starts open, regardless of a supplied `open` attribute;
+all supplied attributes are discarded. A click anywhere on its visible header
+toggles that block in reader or split, not other page content. Reader `]d`/`[d`
+select the next/previous header with a visible raster highlight, and `za` toggles
+the selected block. Reader `<CR>` still returns to the source. In split,
+`:MdViewToggleDetail` toggles the innermost block containing the source cursor;
+no mapping is installed in the source buffer.
+
+Mouse clicks require Neovim/terminal mouse reporting; mdview does not set the
+global `mouse` option. The reader keys and split command work without a mouse.
+
+Close/reopen resets state. Edits preserve a closed block only if its entire
+original source slice is unique and unchanged in the new buffer; ambiguous or
+changed blocks reopen. Width and palette reloads preserve unchanged state.
+Collapsed interior lines navigate to the header. Folding changes document
+height and relayouts the native HTML in the existing worker without rerunning
+Markdown conversion or Mermaid; whole-document layout time can still grow.
+The Markdown body is parsed only when cmark recognizes it (not inside an opaque
+HTML block); leave an empty line after `</summary>` before Markdown headings
+and lists. No browser DOM, clickable links or general HTML events are provided.
 
 
 Stock CSS supplies border/spacing and a 16×16 icon box with `vertical-align: middle`.
