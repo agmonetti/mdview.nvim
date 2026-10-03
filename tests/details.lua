@@ -82,6 +82,36 @@ local function check()
       "user attributes reached the renderer")
     if not case[2] then assert(result.stdout:find("&lt;",1,true),"rejected heading was not rendered literally") end
   end
+  local lazy=directory.."/lazy.md"
+  vim.fn.writefile({
+    "<details>", "<summary><h3>Reliability</h3></summary>", "",
+    "  - A single-server system requires planned downtime.",
+    "  Whereas, a system that can tolerate machine failure can be patched one node at a time.",
+    "", "  > A quoted observation.",
+    "  When dealing with faults, there is no quick solution.",
+    "", "</details>", "", "# After details"
+  },lazy)
+  local lazy_result=vim.system({root.."/build/mdview-preview","--html",lazy,root.."/styles/markdown.css","marked"},
+    {text=true}):wait()
+  assert(lazy_result.code==0,lazy_result.stderr)
+  assert(lazy_result.stdout:find("Whereas, a system",1,true)
+    and lazy_result.stdout:find("When dealing with faults",1,true)
+    and lazy_result.stdout:find("After details",1,true),"lazy continuation lost rendered text")
+  mdview.setup({raw=false,smooth=false,html=true})
+  vim.cmd.edit(vim.fn.fnameescape(lazy))
+  mdview.open("split")
+  wait_for(settled,"lazy continuation split frame")
+  local lazy_state=mdview.status()
+  for _,line in ipairs({5,8}) do
+    local anchored=false
+    for _,fragment in ipairs(lazy_state.fragments) do
+      if fragment.line==line and fragment.column==2 then anchored=true end
+    end
+    assert(anchored,"lazy continuation did not anchor at physical source column on line "..line)
+  end
+  assert(shown and #shown>0 and lazy_state.frame.revision==lazy_state.revision,
+    "lazy continuation did not publish a viewport")
+  mdview.close()
   mdview.setup({raw=false,smooth=false,theme="nvim",alerts=true,html=true})
   vim.cmd.edit(vim.fn.fnameescape(source))
   mdview.open("replace")

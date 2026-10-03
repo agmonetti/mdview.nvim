@@ -71,8 +71,9 @@ nvim --headless -u NONE -l tests/mermaid.lua
   scrolling, independent height changes, split innermost cursor toggles,
   unique-state preservation across edits/resize/palette, changed-block reset,
   rapid opposite toggles without stale frames, malformed-summary fallback and
-  same-worker correction, session reset and `html=false` rejection; live image
-  display and terminal cell sizes are mocked.
+  same-worker correction, session reset and `html=false` rejection. It also
+  checks list/quote lazy-continuation source columns and a published split frame
+  for text after a details header; live image display and cell sizes are mocked.
 
 The first-click mouse regression requires an actual Neovim TUI/PTY (not headless)
 and mocks only image display and Kitty transport:
