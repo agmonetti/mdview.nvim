@@ -142,7 +142,8 @@ summary; alternatively, a summary may contain exactly one direct `<h1>`–`<h6>`
 with text, entities and `<b>`. The heading keeps its level but not its block
 margins. Other raw headings, mixed summary content, nested/multiple headings
 and `<p>` inside summary fall back to literal text. Wrappers and text discard
-user attributes; only local image `src` and `alt` survive. `span` is unwrapped.
+user attributes; only local image `src`, `alt`, `width` and `height` survive.
+`span` is unwrapped.
 Unsupported/malformed tags, invalid nesting, incomplete comments and unusable
 HTML images are escaped as literal source with localized stderr diagnostics,
 so unrelated document content remains visible.
@@ -157,10 +158,21 @@ policy limits do not cap every decoder allocation or constitute a sandbox.
 Markdown images continue through the existing production loader unchanged; the
 HTML-specific allowlist/budgets do not narrow their supported formats or behavior.
 
-Width/height controls, HTML tables, HTML links, `picture`/`source`, SVG and
-remote resources remain outside this selection. See the
-[development notes](development.md#closed-html-subset) and
-[agreed scope](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
+Image `width`/`height` accept positive decimal integer pixels (with an optional
+lowercase `px` suffix), at most 4096 each. Without attributes intrinsic sizing
+is unchanged. One dimension preserves the intrinsic aspect ratio; two specify
+a containment box, never a stretch. Requested sizes are fitted to a fixed
+4096 px height ceiling and conservatively to viewport width minus the stock
+96 px horizontal padding; narrower nested blocks may further constrain them
+through CSS. Invalid, duplicate, fractional, non-pixel or unrepresentably
+small aspect-preserving dimensions produce a positioned literal fallback.
+Intrinsic decoder budgets apply before sizing:
+a small requested image cannot bypass a rejected large source. Height-only
+window resize remains DRAW-only; width changes trigger LOAD/reflow.
+
+HTML tables, HTML links, `picture`/`source`, SVG and remote resources remain
+outside this selection. See the [development notes](development.md#closed-html-subset)
+and [agreed scope](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
 
 ### Interactive details
 

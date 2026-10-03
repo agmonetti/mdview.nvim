@@ -64,6 +64,17 @@ local function check()
     "valid local HTML image hit the literal fallback: " .. html_image_result.stderr)
   assert(html_image_result.stdout:find("READY 1",1,true) and html_image_result.stdout:find("FRAME 1 1",1,true)
     and html_image_result.stdout:find("FRAG 1 7 ",1,true), "production local HTML image did not lay out, draw and retain its source anchor")
+  local markdown_image=directory .. "/markdown-image.md"
+  vim.fn.writefile({"Before ![HTML pixel](local%20image.png) after", "", "# HTML image tail"}, markdown_image)
+  local markdown_output=directory .. "/markdown-image-viewport.png"
+  local markdown_result=command({root .. "/build/mdview-preview"}, table.concat({"LOAD", 1, 700,
+    hexpath(markdown_image), hexpath(directory), hexpath(root .. "/styles/markdown.css")}, " ")
+    .. "\nDRAW 1 1 0 0 0 400 " .. hexpath(markdown_output) .. "\nQUIT\n")
+  assert(markdown_result:find("FRAME 1 1",1,true), "Markdown image oracle did not render")
+  local image_compare=vim.system({"magick", "compare", "-metric", "AE", html_image_output, markdown_output, "null:"},
+    {text=true}):wait()
+  assert(image_compare.code==0 and tonumber(image_compare.stderr:match("^[%d.]+"))==0,
+    "production HTML image pixels/layout differ from the same Markdown image: " .. image_compare.stderr)
   -- A rejected remote image inside a raw block must inherit the surrounding
   -- paragraph's source label, not the document root's label.
   local remote_image=directory .. "/remote-image.md"

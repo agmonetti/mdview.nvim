@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+mode=${1:-split}
+case "$mode" in replace|split) ;; *) echo 'Usage: manual-dimensions [replace|split] [document.md]' >&2; exit 2;; esac
+if [[ -n ${SSH_CLIENT-}${SSH_TTY-}${SSH_CONNECTION-}${TMUX-} || ( ${TERM-} != xterm-kitty && -z ${KITTY_WINDOW_ID-} ) ]]; then
+  echo 'Run inside local Kitty, outside SSH/tmux.' >&2; exit 1
+fi
+[[ -x $root/build/mdview-preview ]] || { echo "Build explicitly: bash '$root/scripts/build.sh'" >&2; exit 1; }
+if [[ -n ${2-} ]]; then
+  document=$2
+else
+  fixture=$(mktemp -d /tmp/mdview-dimensions.XXXXXX)
+  trap 'rm -rf -- "$fixture"' EXIT
+  magick -size 1200x60 xc:'#3592c7' "$fixture/wide.png"
+  magick -size 60x1200 xc:'#c73592' "$fixture/tall.png"
+  cat > "$fixture/document.md" <<'MARKDOWN'
+# HTML image sizing
+
+Intrinsic wide image (may fill the viewport):
+
+<img src="wide.png" alt="wide intrinsic">
+
+Width 120px, intrinsic aspect ratio:
+
+<img src="wide.png" width="120" alt="wide sized">
+
+Height 120px, fitted to available width:
+
+<img src="wide.png" height="120" alt="wide height">
+
+Tall image in a 120×120 containment box:
+
+<img src="tall.png" width="120" height="120" alt="tall boxed">
+
+<details>
+<summary>Toggle sized image</summary>
+<img src="wide.png" width="240px" alt="inside details">
+</details>
+
+After the images. Edit a dimension without saving, resize the split and toggle details.
+MARKDOWN
+  document=$fixture/document.md
+fi
+[[ -f $document ]] || { echo "Missing document: $document" >&2; exit 1; }
+export MDVIEW_MANUAL_ROOT=$root MDVIEW_MANUAL_MODE=$mode
+nvim "$document" -c 'lua vim.opt.runtimepath:prepend(vim.env.MDVIEW_MANUAL_ROOT); vim.cmd("runtime plugin/mdview.lua"); package.loaded["mdview"]=nil; require("mdview").setup({html=true,raw=false,smooth=false,zbelow=false,split_follow="viewport"}); require("mdview").open(vim.env.MDVIEW_MANUAL_MODE)'

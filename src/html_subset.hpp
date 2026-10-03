@@ -5,6 +5,8 @@ struct HtmlToken {
     size_t begin = 0, end = 0;
     std::string name;
     std::string src, alt, image_error;
+    uint32_t requested_width = 0, requested_height = 0;
+    bool has_width = false, has_height = false;
     bool has_src = false;
     bool closing = false, self = false, valid = true;
     int group = -1;
@@ -41,6 +43,20 @@ static std::string html_attribute(const std::string& value) {
         out += value[i++];
     }
     return out;
+}
+static bool html_dimension(const std::string& value, uint32_t& result) {
+    size_t end = value.size();
+    if (end >= 2 && value.compare(end-2, 2, "px") == 0) end -= 2;
+    if (!end) return false;
+    uint32_t number = 0;
+    for (size_t i = 0; i < end; ++i) {
+        if (value[i] < '0' || value[i] > '9') return false;
+        number = number * 10 + static_cast<unsigned>(value[i] - '0');
+        if (number > 4096) return false;
+    }
+    if (!number) return false;
+    result = number;
+    return true;
 }
 static HtmlToken html_tag(const std::string& raw, size_t begin) {
     HtmlToken token; token.kind = HtmlToken::tag; token.begin = begin;
@@ -98,6 +114,12 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
             if (!has_value) token.valid = false;
             if (attribute == "src") { token.src = html_attribute(value); token.has_src = has_value; }
             else token.alt = html_attribute(value);
+        }
+        if (token.name == "img" && (attribute == "width" || attribute == "height")) {
+            uint32_t size = 0;
+            if (!has_value || !html_dimension(value, size)) token.valid = false;
+            if (attribute == "width") { token.has_width = true; token.requested_width = size; }
+            else { token.has_height = true; token.requested_height = size; }
         }
     }
     token.valid = false; token.end = raw.size(); return token;
@@ -326,7 +348,7 @@ std::string html_annotate(std::string html) const {
     }
     return html;
 }
-void sanitize_html(cmark_node* root, bool marked) {
+void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
     html_prepare_positions(root);
     html_bare_text.clear();
     html_fallback_labels.clear(); html_root_label = -1;
@@ -521,7 +543,22 @@ void sanitize_html(cmark_node* root, bool marked) {
     // Only surviving img tokens may reach the local decoder. Invalid wrappers stay opaque.
     for (auto& raw : raws) for (auto& token : raw.tokens) {
         if (token.name != "img" || (token.group >= 0 && !groups[token.group].valid)) continue;
-        if (token.image_error.empty()) html_images::preflight(token.src, token.image_error);
+        if (token.image_error.empty()) {
+            std::string reason;
+            auto* image = html_images::surface(token.src, &reason);
+            if (!image) token.image_error = reason;
+            else if (token.has_width || token.has_height) {
+                const uint64_t iw = cairo_image_surface_get_width(image), ih = cairo_image_surface_get_height(image);
+                // Keep the intrinsic decoded surface. Fit requested dimensions within
+                // a fixed vertical cap and the stock horizontal document padding.
+                const uint64_t limit = static_cast<uint64_t>(std::max(1, viewport_width - 96));
+                const uint64_t bw = std::min<uint64_t>(token.has_width ? token.requested_width : (token.has_height ? 4096 : iw), limit);
+                const uint64_t bh = token.has_height ? token.requested_height : 4096;
+                const uint64_t fitted_width = std::min(bw, (bh * iw) / ih);
+                if (!fitted_width) token.image_error = "requested image box cannot fit intrinsic aspect ratio at pixel precision";
+                else token.requested_width = static_cast<uint32_t>(fitted_width);
+            }
+        }
         if (!token.image_error.empty()) {
             const auto position = raw.positions[token.begin];
             std::cerr << "HTML subset at " << position.line << ':' << position.column+1 << ": " << token.image_error << '\n';
@@ -614,6 +651,8 @@ void sanitize_html(cmark_node* root, bool marked) {
                     continue;
                 }
                 html += "<img src=\"" + escape(html_images::register_html_source(token.src)) + "\" alt=\"" + escape(token.alt) + "\"";
+                if (token.has_width || token.has_height)
+                    html += " style=\"width:" + std::to_string(token.requested_width) + "px;height:auto\"";
                 if (marked) {
                     const auto first = raw.positions[token.begin], last = raw.positions[token.end-1];
                     html += " data-mdview-image=\"" + std::to_string(first.line)

@@ -377,7 +377,7 @@ class Markdown {
     }
 public:
     std::vector<Detail>& get_details() { return details; }
-    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false, bool html_enabled = true) {
+    std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false, bool html_enabled = true, int viewport_width = 4096) {
         lines.clear(); labels.clear(); details.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
@@ -415,7 +415,7 @@ public:
                 }
                 render_alerts(root, found, marked);
             }
-            if (html_enabled) sanitize_html(root, marked);
+            if (html_enabled) sanitize_html(root, marked, viewport_width);
             if (marked) instrument(root);
             std::unique_ptr<char, decltype(&std::free)> rendered(cmark_render_html(root, CMARK_OPT_UNSAFE, cmark_parser_get_syntax_extensions(parser)), &std::free);
             std::string html = html_annotate(rendered.get());
@@ -516,6 +516,15 @@ class Container : public mdview::OcticonContainer {
 public:
     Container(const std::string& base, html2png::converter* converter, const MermaidRenderer* renderer)
         : mdview::OcticonContainer(base, converter), mermaid(renderer) {}
+    void make_url(const char* url, const char* basepath, std::string& out) override {
+        // The adapter prefixes relative URLs with the Markdown directory. HTML image
+        // tokens are already scoped to this LOAD and must reach get_image unchanged.
+        if (html_images::context.html_sources.find(url) != html_images::context.html_sources.end()) {
+            out = url;
+        } else {
+            html2png::container::make_url(url, basepath, out);
+        }
+    }
     cairo_surface_t* get_image(const std::string& url) override {
         const auto html = html_images::context.html_sources.find(url);
         if (html != html_images::context.html_sources.end()) {
@@ -582,7 +591,7 @@ int main(int argc, char** argv) {
                 }
                 auto t = Clock::now();
                 html_images::configure(unhex(base), unhex(snapshot));
-                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts, html_enabled);
+                auto body = markdown.convert(read_file(unhex(snapshot)), true, &mermaid, alerts, html_enabled, w);
                 layout_html = document_html(body, read_file(unhex(css)));
                 base_path = unhex(base);
                 converter = std::make_unique<html2png::converter>(w, 800, 96.0, "sans-serif");

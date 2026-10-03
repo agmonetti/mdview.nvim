@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-03",
+  "scope": "Investigation only. Production worker unchanged; native/headless image display mocked in Neovim; no Kitty visual acceptance.",
+  "commands": [
+    "nvim --headless -u NONE -l /tmp/mdview-production-image-regression.lua",
+    "nvim --headless -u NONE -l /tmp/mdview-production-image-details-regression.lua"
+  ],
+  "harness": "Throwaway copies of tests/html/images_regression.lua replaced only the isolated worker path with build/mdview-preview; the second copy additionally inserted the same HTML img into an open details body. Both completed with PASS. Neither harness was retained; independent per-revision native viewport oracle and disk-unchanged checks are in the original test.",
+  "native_baseline": {
+    "fixture": "# Before, blank, HTML img, blank, # Following; local solid-color PNGs 160x96, 1200x60, 60x1200; stylesheet styles/markdown.css",
+    "widths": [240, 420, 760],
+    "following_frag_y": {
+      "normal_160x96": [218.2, 218.2, 218.2],
+      "wide_1200x60": [134.2, 143.2, 160.2],
+      "tall_60x1200": [1322.2, 1322.2, 1322.2]
+    },
+    "details_420": {
+      "ready_heights_open_closed_reopened": [405.4, 236.6, 405.4],
+      "image_frag_y_open_closed_reopened": [127.8, 80.8, 127.8],
+      "following_heading_y_open_closed_reopened": [336, 167.2, 336],
+      "open_vs_reopened_png_bytes_equal": true,
+      "method": "One worker LOAD, DRAW, TOGGLE closed/DRAW, TOGGLE open; remove image file after second TOGGLE and before final DRAW. Final DRAW still produced the same raster. This proves no file re-read for that DRAW, not an instrumented decoder-call count on every path."
+    },
+    "height_only": "One LOAD at width 420 followed by 420x400 and 420x600 DRAWs: one READY, two FRAMEs, first 400 RGBA rows pixel-equal, unchanged following-heading FRAG y=1322.2."
+  },
+  "attribute_policy_now": {
+    "cases": "2 extreme PNGs x 3 widths x 5 accepted attribute combinations (width=120; height=120; both 120; width=2000 height=30; width=-1 height=5%)",
+    "result": "All 30 PNG byte hashes, following-heading FRAGs and READY heights matched each corresponding no-attribute baseline exactly. Attributes are discarded, not validated. Duplicate width attributes instead produced a malformed-img diagnostic and literal fallback in all six extreme/width combinations, not image sizing.",
+    "intrinsic_guard": "8193x1 PNG with width=1 height=1 rejected at line 3:1 as intrinsic image dimensions exceed pixel safety budget; missing source likewise produced a localized diagnostic."
+  },
+  "css_experiment": {
+    "method": "Author-controlled CSS appended to stock stylesheet, production worker LOAD/DRAW. Not user HTML attribute support. Solid-color exact RGB image bbox extracted from PNG, 1600px-tall draw clips taller image; following-heading FRAG independent of pixel-box detection.",
+    "widths": [240, 420, 760],
+    "wide_1200x60": {
+      "intrinsic_visible_box_wh": [[240, 12], [420, 21], [760, 38]],
+      "width_120_height_auto_wh": [120, 6],
+      "height_120_width_auto_wh": [[240, 120], [420, 120], [760, 120]],
+      "width_120_height_120_wh": [120, 120],
+      "height_1000_width_auto_wh": [[240, 1000], [420, 1000], [760, 1000]],
+      "following_frag_y_intrinsic": [134.2, 143.2, 160.2],
+      "following_frag_y_height_1000": [1122.2, 1122.2, 1122.2]
+    },
+    "tall_60x1200": {
+      "intrinsic_visible_box_wh": [60, 1200],
+      "width_120_height_auto_visible_wh": [120, 1528],
+      "width_120_height_auto_clipped_at_1600": true,
+      "width_120_height_auto_following_frag_y": 2522.2,
+      "height_120_width_auto_wh": [6, 120],
+      "width_120_height_120_wh": [120, 120],
+      "height_1000_width_auto_wh": [50, 1000],
+      "max_height_30_with_width_120_height_auto_following_frag_y": 2522.2
+    },
+    "interpretation": "CSS width/height independently can stretch or distort, and max-height did not cap the tall case in this renderer. Visible wide-image box reaches the viewport edge even though .markdown-body has 48px horizontal padding; do not assume content width from CSS alone. These CSS observations do not prove a future computed-size implementation."
+  },
+  "pending": ["Computed aspect-preserving size contract and parser are not implemented", "No live Kitty/physical-input/visual resize proof", "No chosen fixed vertical cap; high-aspect case demonstrates need to decide whether to cap requested size"]
+}

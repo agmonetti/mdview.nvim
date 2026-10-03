@@ -5,7 +5,7 @@ local root=vim.fn.getcwd()
 vim.opt.runtimepath:prepend(root)
 local directory=(vim.env.TMPDIR or '/tmp') .. '/mdview-html-images-' .. vim.fn.getpid()
 vim.fn.mkdir(directory,'p')
-local worker=root .. '/build/html-subset/mdview-preview'
+local worker=vim.env.MDVIEW_IMAGE_WORKER or (root .. '/build/html-subset/mdview-preview')
 local css=root .. '/styles/markdown.css'
 local mdview,displayed
 local renders={}
@@ -116,6 +116,20 @@ local function check()
       oracle(s)
     end
     oracle(s)
+    if vim.env.MDVIEW_IMAGE_WORKER then
+      local baseline=displayed
+      local sized='<img src="%E6%9D%B1%E4%BA%AC%20space&amp;image.png" width="18" alt="café &amp; image">'
+      edit(document(sized),mode .. ' unsaved width')
+      assert(displayed~=baseline,'width edit did not change image pixels')
+      local resized=displayed
+      edit(document('<img src="%E6%9D%B1%E4%BA%AC%20space&amp;image.png" width="18" height="5" alt="café">'),
+        mode .. ' unsaved containment box')
+      assert(displayed~=resized,'second dimension did not change raster')
+      edit(document('<details><summary>Local image</summary>\n'
+        .. '<img src="%E6%9D%B1%E4%BA%AC%20space&amp;image.png" width="18" height="5">\n</details>'),
+        mode .. ' sized image inside details')
+      edit(document(valid),mode .. ' restored unsized image')
+    end
     for _,literal in ipairs(invalid) do
       edit(document(literal),mode .. ' rejected src')
       local snapshot=save(directory .. '/inspect.md',source_text(s) .. '\n')

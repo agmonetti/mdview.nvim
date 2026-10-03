@@ -98,9 +98,10 @@ committing; run additional checks for affected features.
 
 The production worker enables a closed, sanitized HTML allowlist by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
-`img src`/`alt`, and structured `details`/`summary` pairs. Supplied attributes
-are discarded other than image `src` and `alt`; `<b>` is summary-only and `span`
-is unwrapped. One direct `<h1>`–`<h6>` per summary accepts text/entities/`<b>`;
+`img src`/`alt`/`width`/`height`, and structured `details`/`summary` pairs.
+Supplied attributes are discarded other than those image attributes;
+`<b>` is summary-only and `span` is unwrapped. One direct `<h1>`–`<h6>` per
+summary accepts text/entities/`<b>`;
 other raw headings and invalid summary content remain literal. Unsupported or
 malformed fragments are escaped as literal source with line/column diagnostics,
 without aborting unrelated content. `setup({html=false})` opts back into explicit
@@ -119,6 +120,22 @@ and additional formats are rejected to literal fallback. Decoder policy limits
 are 8192 px per axis, 16 Mi pixels per image, 64 MiB per regular encoded file and
 32 Mi retained pixels per layout. These conservative limits are not decoder
 sandbox guarantees and do not bound all process memory.
+Requested HTML image sizing is resolved after intrinsic preflight, before
+layout: integer pixels, aspect-preserving containment, 4096 px requested
+vertical ceiling and a conservative viewport-minus-96 horizontal bound.
+The decoded surface is not resized or re-decoded for DRAW. This horizontal
+bound reflects stock padding, not measured nested/custom-CSS content width;
+CSS max-width can constrain narrower contexts. Unsized images retain their
+original geometry. `python3 tests/html/dimensions_check.py` checks actual
+colored image boxes, source anchors, following-heading reflow, invalid
+fallback and same-worker recovery. The production-worker variant of
+`tests/html/images_regression.lua` covers unsaved sizing edits, a details
+body, both modes, latest raster after resize and resource failure/correction
+with native image display mocked. Run it from the repository root:
+
+```bash
+MDVIEW_IMAGE_WORKER="$PWD/build/mdview-preview" nvim --headless -u NONE -l tests/html/images_regression.lua
+```
 
 Permanent production coverage is in `tests/plugin.lua`: default subset rendering
 and literal fallback, the `html=0` worker rejection path, normal Markdown-image

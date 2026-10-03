@@ -178,12 +178,17 @@ containing text, entities and `<b>`. For example,
 block margins. Nested or multiple headings and `<p>` inside `<summary>` fall
 back to literal text. Outside a summary, raw HTML headings remain literal.
 Unsupported fragments do not abort the document. User-supplied attributes
-are discarded except image `src` and `alt`. Remote `https://...` images remain
-literal, not fetched.
-For example, `<img src="assets/banner.png" alt="Banner">` renders a local
-file relative to the Markdown document; the same tag with a remote `src`
-does not render an image. Image `width`/`height` attributes are not applied.
-SVG, HTML tables, HTML links and arbitrary HTML are not included.
+are discarded except image `src`, `alt`, `width` and `height`. Remote
+`https://...` images remain literal, not fetched.
+For example, `<img src="assets/banner.png" width="320" alt="Banner">`
+renders a local image relative to the Markdown document. Image dimensions
+accept positive integer pixels, optionally suffixed `px`; one dimension
+preserves aspect ratio, two form a containment box. Invalid dimensions leave
+the original tag visible with a diagnostic. SVG, HTML tables, HTML links and
+arbitrary HTML are not included.
+For a local Kitty check with generated wide/tall PNG fixtures, run
+`bash scripts/manual-dimensions split` from the checkout, or
+`bash scripts/manual-dimensions replace` after exiting the split.
 
 Markdown in a details body follows cmark's HTML-block rules: leave a blank line
 after `</summary>` before headings or lists, or they may remain literal text.
