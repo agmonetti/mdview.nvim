@@ -20,9 +20,12 @@ struct HtmlRaw {
 struct HtmlGroup { bool valid = true; Position start{1, 0}; std::string reason; };
 static bool html_space(char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'; }
 static bool html_letter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+static bool html_heading(const std::string& name) {
+    return name.size() == 2 && name[0] == 'h' && name[1] >= '1' && name[1] <= '6';
+}
 static bool html_allowed(const std::string& name) {
     return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
-        || name == "details" || name == "summary" || name == "b";
+        || name == "details" || name == "summary" || name == "b" || html_heading(name);
 }
 static std::string html_attribute(const std::string& value) {
     std::string out;
@@ -386,22 +389,39 @@ void sanitize_html(cmark_node* root, bool marked) {
     };
     diagnose_text(diagnose_text, root);
     std::vector<HtmlGroup> groups;
-    struct Open { std::string name; int group; int detail = -1; };
+    struct Open { std::string name; int group; int detail = -1; int heading_count = 0; };
     std::vector<Open> stack;
     auto fail = [&](int group, const char* reason) {
         groups[group].valid = false;
         if (groups[group].reason.empty()) groups[group].reason = reason;
     };
+    auto summary_heading = [&] {
+        for (auto it = stack.rbegin(); it != stack.rend(); ++it) {
+            if (html_heading(it->name) && it->detail >= 0) return true;
+            if (it->name == "summary") break;
+        }
+        return false;
+    };
+    auto title_text = [&](const std::string& text, int group) {
+        if (stack.empty() || text.find_first_not_of(" \t\r\n") == std::string::npos) return;
+        if (stack.back().name == "details" && stack.back().detail >= 0
+            && !details[stack.back().detail].header)
+            fail(group, "summary must be the first details child");
+        if (stack.back().detail >= 0 && (stack.back().name == "summary"
+            || stack.back().name == "b" || html_heading(stack.back().name))) {
+            for (auto it = stack.rbegin(); it != stack.rend(); ++it) {
+                if (it->name == "summary") {
+                    if (it->heading_count && !summary_heading())
+                        fail(group, "summary heading must be its only content");
+                    break;
+                }
+            }
+            details[stack.back().detail].title = true;
+        }
+    };
     for (const auto& event : events) {
         if (event.text) {
-            if (!stack.empty() && stack.back().name == "details" && stack.back().detail >= 0
-                && !details[stack.back().detail].header
-                && std::string(cmark_node_get_literal(event.text)).find_first_not_of(" \t\r\n") != std::string::npos)
-                fail(stack.back().group, "summary must be the first details child");
-            if (!stack.empty() && (stack.back().name == "summary" || stack.back().name == "b")
-                && stack.back().detail >= 0
-                && std::string(cmark_node_get_literal(event.text)).find_first_not_of(" \t\r\n") != std::string::npos)
-                details[stack.back().detail].title = true;
+            title_text(cmark_node_get_literal(event.text), stack.empty() ? -1 : stack.front().group);
             continue;
         }
         auto& raw = raws[event.raw];
@@ -412,14 +432,7 @@ void sanitize_html(cmark_node* root, bool marked) {
             }
             token.group = group;
             if (token.kind == HtmlToken::text) {
-                const auto text = raw.literal.substr(token.begin, token.end-token.begin);
-                if (!stack.empty() && stack.back().name == "details" && stack.back().detail >= 0
-                    && !details[stack.back().detail].header
-                    && text.find_first_not_of(" \t\r\n") != std::string::npos)
-                    fail(group, "summary must be the first details child");
-                if (!stack.empty() && (stack.back().name == "summary" || stack.back().name == "b")
-                    && stack.back().detail >= 0 && text.find_first_not_of(" \t\r\n") != std::string::npos)
-                    details[stack.back().detail].title = true;
+                title_text(raw.literal.substr(token.begin, token.end-token.begin), group);
                 continue;
             }
             if (token.kind == HtmlToken::tag && token.name == "img") {
@@ -431,9 +444,16 @@ void sanitize_html(cmark_node* root, bool marked) {
             }
             if (!token.valid) { fail(group, token.kind == HtmlToken::comment ? "unclosed comment" : "unsupported or malformed HTML"); continue; }
             if (token.kind == HtmlToken::comment) continue;
-            if (token.name == "b" && (stack.empty() || (stack.back().name != "summary" && stack.back().name != "b"))) {
-                fail(group, "b is only allowed inside summary");
+            if (token.name == "b" && (stack.empty() || (stack.back().name != "summary" && stack.back().name != "b"
+                && !html_heading(stack.back().name)) || (stack.back().name == "summary" && stack.back().heading_count))) {
+                fail(group, "b is only allowed inside summary text or heading");
                 continue;
+            }
+            if (html_heading(token.name) && !token.closing) {
+                if (stack.empty() || stack.back().name != "summary" || stack.back().detail < 0
+                    || stack.back().heading_count || details[stack.back().detail].title)
+                    fail(group, "heading is only allowed as the sole summary child");
+                else ++stack.back().heading_count;
             }
             if (token.name == "br" && !stack.empty()
                 && (stack.back().name == "summary"
@@ -461,7 +481,7 @@ void sanitize_html(cmark_node* root, bool marked) {
             } else if (token.name != "br") {
                 if (token.name == "details") {
                     if (!stack.empty() && ((stack.back().name == "details" && !details[stack.back().detail].header)
-                        || stack.back().name == "summary" || stack.back().name == "b"))
+                        || stack.back().name == "summary" || stack.back().name == "b" || html_heading(stack.back().name)))
                         fail(group, "details cannot precede or occur inside summary");
                     int parent = -1;
                     for (auto it = stack.rbegin(); it != stack.rend(); ++it)
@@ -477,14 +497,17 @@ void sanitize_html(cmark_node* root, bool marked) {
                         token.detail = stack.back().detail;
                         details[token.detail].header = raw.positions[token.begin].line;
                     }
-                } else if (token.name != "b" && stack.size() && (stack.back().name == "summary" || stack.back().name == "b")) {
+                } else if (token.name != "b" && !html_heading(token.name) && !stack.empty()
+                    && (stack.back().name == "summary" || stack.back().name == "b" || html_heading(stack.back().name))) {
                     fail(group, "unsupported tag inside summary");
+                } else if (html_heading(token.name) && (stack.empty() || stack.back().name != "summary")) {
+                    fail(group, "heading is only allowed as the sole summary child");
                 } else if (token.name == "p" || token.name == "div") {
                     for (const auto& open : stack) if (open.name != "div" && open.name != "details")
                         fail(group, "invalid block nesting");
-                } else if (stack.size() && stack.back().name == "details" && !details[stack.back().detail].header)
+                } else if (!stack.empty() && stack.back().name == "details" && !details[stack.back().detail].header)
                     fail(group, "summary must be the first details child");
-                if (token.name == "b") token.detail = stack.back().detail;
+                if (token.name == "b" || html_heading(token.name)) token.detail = stack.empty() ? -1 : stack.back().detail;
                 stack.push_back({token.name, group, token.detail});
             }
         }

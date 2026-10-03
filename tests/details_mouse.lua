@@ -10,7 +10,7 @@ local source=directory .. '/source.md'
 local fixture={'# Before',''}
 for i=1,18 do fixture[#fixture+1]='Preface paragraph '..i..' fills the viewport before the interactive header.'; fixture[#fixture+1]='' end
 vim.list_extend(fixture,{'<details>',
-  '<summary>Click this long header even when it wraps onto another terminal cell row at the narrow preview width</summary>',
+  '<summary><h3>Click this <b>long header</b> even when it wraps onto another terminal cell row at the narrow preview width</h3></summary>',
   '', 'Body text','</details>','','# After'})
 for i=1,18 do fixture[#fixture+1]='Following paragraph '..i..' keeps the header scrollable.'; fixture[#fixture+1]='' end
 vim.fn.writefile(fixture,source)

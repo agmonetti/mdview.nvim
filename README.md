@@ -172,10 +172,14 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 The preview enables a deliberately small, sanitized HTML subset by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
 `img` elements with `src`/`alt`, and structured `details`/`summary` pairs.
-Inside a summary only, `<b>` is also allowed; block tags like `<p>` inside `<summary>`
-are not permitted (unlike GFM browser engines) and trigger a literal fallback.
-they do not abort the document. User-supplied attributes are discarded except
-image `src` and `alt`. Remote `https://...` images remain literal, not fetched.
+Inside a summary only, `<b>` is allowed, as is one direct `<h1>`–`<h6>`
+containing text, entities and `<b>`. For example,
+`<summary><h3>Title</h3></summary>` keeps the heading size without its normal
+block margins. Nested or multiple headings and `<p>` inside `<summary>` fall
+back to literal text. Outside a summary, raw HTML headings remain literal.
+Unsupported fragments do not abort the document. User-supplied attributes
+are discarded except image `src` and `alt`. Remote `https://...` images remain
+literal, not fetched.
 For example, `<img src="assets/banner.png" alt="Banner">` renders a local
 file relative to the Markdown document; the same tag with a remote `src`
 does not render an image. Image `width`/`height` attributes are not applied.

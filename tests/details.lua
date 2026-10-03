@@ -34,7 +34,7 @@ local function file(path)
 end
 local source=directory .. "/document.md"
 vim.fn.writefile({
-  "# Before", "", "<details>", "  <summary><b>Outer &amp; title</b></summary>", "",
+  "# Before", "", "<details>", "  <summary><h3>Outer &amp; <b>title with enough words to wrap across narrow preview rows</b></h3></summary>", "",
   "  ### Body heading", "  Outer body", "", "  <details>",
   "    <summary>Inner title</summary>", "", "    Inner body", "  </details>",
   "", "  Outer tail", "</details>", "", "After details", "",
@@ -61,6 +61,28 @@ local function check()
     assert(compared.code==0 or compared.code==1,compared.stderr)
     assert(tonumber(compared.stderr:match("^[%d.]+"))==0,"details source labels changed rendered pixels at "..width)
   end
+  local boundaries={
+    {"<h3>Outside</h3>",false},
+    {"<details>\n<summary><h3>A</h3><h4>B</h4></summary>\nBody\n</details>",false},
+    {"<details>\n<summary><h3><h4>A</h4></h3></summary>\nBody\n</details>",false},
+    {"<details>\n<summary><p>A</p></summary>\nBody\n</details>",false},
+    {"<details>\n<summary><h3>A</h3> trailing</summary>\nBody\n</details>",false},
+  }
+  for level=1,6 do
+    boundaries[#boundaries+1]={"<details>\n<summary><h"..level.." style=\"color:red\" id=\"x\">A &amp; <b>B</b></h"..level.."></summary>\nBody\n</details>",true}
+  end
+  for index,case in ipairs(boundaries) do
+    local fixture=directory.."/boundary-"..index..".md"
+    local f=assert(io.open(fixture,"wb")); assert(f:write(case[1])); f:close()
+    local result=vim.system({root.."/build/mdview-preview","--html",fixture,root.."/styles/markdown.css","marked"},
+      {text=true}):wait()
+    assert(result.code==0,result.stderr)
+    assert((result.stdout:find('data-mdview-detail="0"',1,true)~=nil)==case[2],
+      "heading boundary changed details acceptance: "..index)
+    assert(not result.stdout:find('style="color:red"',1,true) or not case[2],
+      "user attributes reached the renderer")
+    if not case[2] then assert(result.stdout:find("&lt;",1,true),"rejected heading was not rendered literally") end
+  end
   mdview.setup({raw=false,smooth=false,theme="nvim",alerts=true,html=true})
   vim.cmd.edit(vim.fn.fnameescape(source))
   mdview.open("replace")
@@ -71,12 +93,25 @@ local function check()
   local full_height=s.document_height
   local outer,inner,independent=list[1],list[2],list[3]
   assert(outer.start_line<inner.start_line and inner.end_line<outer.end_line,"source ranges wrong")
+  local title_line=4
   local function line_y(state,line)
     local y
     for _,f in ipairs(state.fragments) do if f.line==line then y=math.min(y or f.y,f.y) end end
     return y
   end
   assert(line_y(s,12) and line_y(s,12)>inner.y,"open body lacks its own anchor")
+  assert(line_y(s,title_line) and line_y(s,title_line)>=outer.y and line_y(s,title_line)<outer.y+outer.height,
+    "heading text is not attributed inside its header")
+  assert(outer.height>40,"heading header did not wrap")
+  local title_source=api.nvim_buf_get_lines(s.source_buf,title_line-1,title_line,false)[1]
+  local heading_column=assert(title_source:find("Outer",1,true))-1
+  local bold_column=assert(title_source:find("title with",1,true))-1
+  local heading_anchor,bold_anchor=false,false
+  for _,fragment in ipairs(s.fragments) do
+    if fragment.line==title_line and fragment.column==heading_column then heading_anchor=true end
+    if fragment.line==title_line and fragment.column==bold_column then bold_anchor=true end
+  end
+  assert(heading_anchor and bold_anchor,"heading/bold bytes lost source anchors")
   local revision=s.revision
   vim.cmd("normal za")
   assert(s.revision==revision and s.selected_detail==nil,"za toggled without selection")
@@ -111,7 +146,7 @@ local function check()
   wait_for(function() return settled() and not mdview.status().details[outer.id].open end,"close outer")
   s=mdview.status()
   assert(s.document_height<inner_height and s.details[independent.id].open,"outer did not reflow")
-  assert(s.details[outer.id].height>0,"closed header has no hitbox")
+  assert(s.details[outer.id].height>40,"closed multirow heading lost hitbox")
   assert(math.abs(assert(line_y(s,12))-s.details[outer.id].y)<1,"hidden nested body did not navigate to visible outer header")
   s.toggle_detail(outer.id)
   wait_for(function() return settled() and mdview.status().details[outer.id].open end,"reopen outer")
@@ -134,7 +169,7 @@ local function check()
   api.nvim_buf_set_lines(s.source_buf,4,5,false,{"  <summary></summary>"})
   wait_for(function() return settled() and #details(mdview.status())==1 end,"malformed outer block fell back locally")
   assert(line_y(s,27) and file(source)==disk,"invalid block removed following source or wrote disk")
-  api.nvim_buf_set_lines(s.source_buf,4,5,false,{"  <summary><b>Outer &amp; title</b></summary>"})
+  api.nvim_buf_set_lines(s.source_buf,4,5,false,{"  <summary><h3>Outer &amp; <b>title with enough words to wrap across narrow preview rows</b></h3></summary>"})
   wait_for(function() return settled() and #details(mdview.status())==3 end,"corrected block recovered in same worker")
   mdview.close()
   mdview.open("split")

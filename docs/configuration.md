@@ -138,10 +138,14 @@ Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
 closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete
 `<!-- comments -->`, local `<img src="local/path" alt="...">`, and structured
 `<details>` with a nonempty first direct `<summary>`. `<b>` is allowed only inside
-summary. Wrappers and text discard user attributes; only local image `src` and
-`alt` survive. `span` is unwrapped. Unsupported/malformed tags, invalid nesting,
-incomplete comments and unusable HTML images are escaped as literal source with
-localized stderr diagnostics, so unrelated document content remains visible.
+summary; alternatively, a summary may contain exactly one direct `<h1>`–`<h6>`
+with text, entities and `<b>`. The heading keeps its level but not its block
+margins. Other raw headings, mixed summary content, nested/multiple headings
+and `<p>` inside summary fall back to literal text. Wrappers and text discard
+user attributes; only local image `src` and `alt` survive. `span` is unwrapped.
+Unsupported/malformed tags, invalid nesting, incomplete comments and unusable
+HTML images are escaped as literal source with localized stderr diagnostics,
+so unrelated document content remains visible.
 `html=false` restores the document-level raw-HTML error.
 
 HTML images are local only and accept PNG, JPEG, static GIF, BMP and static WebP

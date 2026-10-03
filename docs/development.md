@@ -100,10 +100,11 @@ The production worker enables a closed, sanitized HTML allowlist by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
 `img src`/`alt`, and structured `details`/`summary` pairs. Supplied attributes
 are discarded other than image `src` and `alt`; `<b>` is summary-only and `span`
-is unwrapped. Unsupported or malformed fragments are escaped as
-literal source with line/column diagnostics, not passed through as raw HTML and
-not allowed to abort unrelated content. `setup({html=false})` opts back into
-explicit raw-HTML rejection.
+is unwrapped. One direct `<h1>`–`<h6>` per summary accepts text/entities/`<b>`;
+other raw headings and invalid summary content remain literal. Unsupported or
+malformed fragments are escaped as literal source with line/column diagnostics,
+without aborting unrelated content. `setup({html=false})` opts back into explicit
+raw-HTML rejection.
 
 Implementation is in `src/html_subset.hpp` and `src/html_images.hpp`, integrated
 into `src/preview.cpp`; `lua/mdview/init.lua` sends the opt-out over the existing

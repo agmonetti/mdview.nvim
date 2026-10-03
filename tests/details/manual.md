@@ -3,7 +3,7 @@
 Text before the first disclosure.
 
 <details>
-  <summary><b>First section — click this header</b></summary>
+  <summary><h3>First section — click this <b>heading</b> even when it wraps at narrow widths</h3></summary>
 
   ### Markdown inside
   Body text with [a link](https://example.com) and **emphasis**.
