@@ -125,6 +125,26 @@ local function check()
   assert(remote_result:find("READY 1",1,true) and remote_result:find("FRAME 1 1",1,true)
     and remote_result:find("FRAG 2 2 ",1,true) and remote_result:find("FRAG 5 2 ",1,true),
     "nested rejected image lost its source anchor or prevented following content from rendering")
+  -- A paragraph's indented lazy continuation has cmark columns relative to
+  -- stripped indentation; it must still attribute the physical arrow bytes.
+  local arrows=directory .. "/arrows.md"
+  local arrow_lines={}
+  for _=1,25 do arrow_lines[#arrow_lines+1]="" end
+  vim.list_extend(arrow_lines, {"As we are saying, we often think of an app like: App -> database",
+    "But, modern apps are usually:", "", "                -> Memcached",
+    "User -> Backend -> PostgreSQL", "                -> Elasticsearch",
+    "", "## Following"})
+  vim.fn.writefile(arrow_lines, arrows)
+  local arrow_html=command({root .. "/build/mdview-preview", "--html", arrows,
+    root .. "/styles/markdown.css", "marked"})
+  assert(arrow_html:find("Elasticsearch",1,true), "indented continuation vanished")
+  local arrow_result=command({root .. "/build/mdview-preview"}, table.concat({"LOAD", 1, 700,
+    hexpath(arrows), hexpath(directory), hexpath(root .. "/styles/markdown.css")}, " ")
+    .. "\nDRAW 1 1 0 0 0 400 " .. hexpath(directory .. "/arrows.png") .. "\nQUIT\n")
+  assert(arrow_result:find("FRAME 1 1",1,true)
+    and arrow_result:find("FRAG 31 16 17 ",1,true)
+    and arrow_result:find("FRAG 31 19 31 ",1,true)
+    and arrow_result:find("FRAG 33 ",1,true), "indented lazy continuation lost physical columns or next heading")
   -- Native AST instrumentation must not change pixels or lose local image resolution.
   for _, mode in ipairs({"plain", "marked"}) do
     local html=command({root .. "/build/mdview-preview", "--html", path, root .. "/styles/markdown.css", mode})

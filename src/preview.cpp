@@ -119,16 +119,23 @@ class Markdown {
         for (int n = start; n <= end && n <= static_cast<int>(lines.size()); ++n) {
             const auto& line = lines[n-1];
             size_t begin = n == start ? static_cast<size_t>(std::max(0, cmark_node_get_start_column(node)-1)) : 0;
-            // cmark's sourcepos on a lazy list/quote continuation can count an
-            // implicit container prefix that is absent from the physical line.
-            // Correct only an exact whole-line text literal at its real first
-            // non-space column; never guess coordinates for partial literals.
+            // cmark can count an implicit container prefix on lazy continuations,
+            // or strip leading indentation from a paragraph continuation while
+            // reporting an end column relative to the stripped text. Remap only
+            // when the literal is the complete non-whitespace physical line.
             if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT && !text.empty()) {
                 const auto first = line.find_first_not_of(" \t");
-                if (first != std::string::npos && first < begin
-                    && line.compare(first, text.size(), text) == 0) begin = first;
+                if (first != std::string::npos && first != begin
+                    && line.compare(first, text.size(), text) == 0
+                    && line.find_first_not_of(" \t\r", first + text.size()) == std::string::npos) {
+                    begin = first;
+                }
             }
             size_t stop = n == end ? std::min(line.size(), static_cast<size_t>(std::max(0, cmark_node_get_end_column(node)))) : line.size();
+            if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT
+                && begin + text.size() > stop && line.compare(begin, text.size(), text) == 0
+                && line.find_first_not_of(" \t\r", begin + text.size()) == std::string::npos)
+                stop = begin + text.size();
             for (size_t col = begin; col < stop; ++col) { raw += line[col]; positions.push_back({n, static_cast<int>(col)}); }
             if (n < end) { raw += '\n'; positions.push_back({n, static_cast<int>(line.size())}); }
         }
