@@ -153,11 +153,22 @@ heading; the original remote image remains unavailable and is not fetched.
 `tests/mermaid.lua` covers a supported ER fence beside a literal unsupported
 flowchart, subsequent text, and an independently failing malformed ER diagram.
 
-Excluded scope includes arbitrary HTML, SVG local images, image width/height
-attributes, HTML tables, `picture`/`source`, HTML links and remote resources.
-Interactive details support is separately documented in
-[configuration](configuration.md#interactive-details); the historical HTML
-policy and evidence distinction are in
+Excluded scope includes arbitrary HTML, SVG local images, `picture`/`source`,
+HTML links and remote resources. HTML image dimensions and closed HTML tables
+are implemented. `python3 tests/html/tables_check.py` checks HTML-table text
+anchors, wrapping reflow, stripped attributes, bounded row/column spans,
+invalid-table literal fallback, plain/marked pixel parity, and pixel-exact
+parity with a GFM table at 300/700 px. A table inside `details` loses visible
+cell anchors when closed and recovers its original pixels when reopened.
+`nvim --headless -u NONE -l tests/html/tables.lua` exercises real worker
+frames in reader/split, unsaved edits, split width reflow and close; only
+image display is mocked. User Kitty screenshots show split and reader tables
+with bordered, merged and wrapped cells, a visible table inside open `details`,
+and a literal invalid-span fallback; this accepts static presentation in that
+configuration, not live edits, toggling or resize. Reproduce with
+`bash scripts/manual-tables split` and then `bash scripts/manual-tables replace`
+after quitting the first Neovim.
+The historical HTML policy and evidence distinction are in
 [`pre-release.md`](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
 
 

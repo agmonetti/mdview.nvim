@@ -137,18 +137,18 @@ ordinary quote fails without alerts; two-space hard breaks are regression-covere
 Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
 closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, standalone
 `h1`–`h6`, inline `strong`, complete `<!-- comments -->`, local
-`<img src="local/path" alt="...">`, and structured `<details>` with a nonempty
-first direct `<summary>`. `<b>` is allowed only inside summary; alternatively,
-a summary may contain exactly one direct `<h1>`–`<h6>` with text, entities
-and `<b>`. The summary heading keeps its level but not its block margins.
-Nested/multiple summary headings, `<strong>` or `<p>` inside summary fall back
-to literal text. `align="center"` on headings or paragraphs becomes fixed
-center alignment; other supplied attributes are discarded. Only local image
-`src`, `alt`, `width` and `height` survive; `span` is unwrapped.
-Unsupported/malformed tags, invalid nesting, incomplete comments and unusable
-HTML images are escaped as literal source with localized stderr diagnostics,
-so unrelated document content remains visible.
-`html=false` restores the document-level raw-HTML error.
+`<img src="local/path" alt="...">`, structured tables, and `<details>` with a
+nonempty first direct `<summary>`. `<b>` is allowed only inside summary;
+alternatively, a summary may contain exactly one direct `<h1>`–`<h6>` with
+text, entities and `<b>`. The summary heading keeps its level but not its block
+margins. Nested/multiple summary headings, `<strong>` or `<p>` inside summary
+fall back to literal text. `align="center"` on headings or paragraphs becomes
+fixed center alignment; other supplied attributes are discarded. Local image
+`src`, `alt`, `width` and `height` and bounded table-cell spans are the only
+other recognized author attributes; `span` is unwrapped. Unsupported/malformed
+tags, invalid nesting, incomplete comments and unusable HTML images are escaped
+as literal source with localized stderr diagnostics, so unrelated document
+content remains visible. `html=false` restores the document-level raw-HTML error.
 
 HTML images are local only and accept PNG, JPEG, static GIF, BMP and static WebP
 when the installed decoder supports them. SVG, animation, remote/file/data URLs,
@@ -171,9 +171,16 @@ Intrinsic decoder budgets apply before sizing:
 a small requested image cannot bypass a rejected large source. Height-only
 window resize remains DRAW-only; width changes trigger LOAD/reflow.
 
-HTML tables, HTML links, `picture`/`source`, SVG and remote resources remain
-outside this selection. See the [development notes](development.md#closed-html-subset)
-and [agreed scope](../pre-release.md#alcance-acordado-y-límites--2026-10-02).
+HTML tables accept explicit `table` with optional `caption`, `thead`, `tbody`
+and `tfoot`, `tr`, and `th`/`td` pairs. Rows may occur directly under `table`.
+`colspan`/`rowspan` on cells accept decimal integers 1–64 without units; other
+attributes (including events, styles, links and alignment) are stripped. No
+implicit closing tags or automatic nesting repair; unsupported/malformed tables
+fall back to visible literal markup. Cell text, entities, `strong`, inline
+subset tags and local images retain their usual policies. Tables use the same
+stylesheet as Markdown tables; long content can still make a narrow table wide.
+HTML links, `picture`/`source`, SVG and remote resources remain outside this
+selection. See the [development notes](development.md#closed-html-subset).
 
 ### Interactive details
 

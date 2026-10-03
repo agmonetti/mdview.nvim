@@ -9,6 +9,7 @@ struct HtmlToken {
     bool has_width = false, has_height = false;
     bool has_src = false;
     bool center = false;
+    uint32_t colspan = 1, rowspan = 1;
     bool closing = false, self = false, valid = true;
     int group = -1;
     int detail = -1;
@@ -28,6 +29,8 @@ static bool html_heading(const std::string& name) {
 }
 static bool html_allowed(const std::string& name) {
     return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
+        || name == "table" || name == "thead" || name == "tbody" || name == "tfoot" || name == "tr"
+        || name == "th" || name == "td" || name == "caption"
         || name == "details" || name == "summary" || name == "b" || name == "strong" || html_heading(name);
 }
 static std::string html_attribute(const std::string& value) {
@@ -58,6 +61,12 @@ static bool html_dimension(const std::string& value, uint32_t& result) {
     if (!number) return false;
     result = number;
     return true;
+}
+static bool html_table_section(const std::string& name) {
+    return name == "thead" || name == "tbody" || name == "tfoot";
+}
+static bool html_table_cell(const std::string& name) {
+    return name == "th" || name == "td";
 }
 static HtmlToken html_tag(const std::string& raw, size_t begin) {
     HtmlToken token; token.kind = HtmlToken::tag; token.begin = begin;
@@ -124,6 +133,15 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
             if (!has_value || !html_dimension(value, size)) token.valid = false;
             if (attribute == "width") { token.has_width = true; token.requested_width = size; }
             else { token.has_height = true; token.requested_height = size; }
+        }
+        if (html_table_cell(token.name) && (attribute == "colspan" || attribute == "rowspan")) {
+            uint32_t size = 0;
+            if (!has_value || value.empty() || value.size() > 2
+                || !std::all_of(value.begin(), value.end(), [](char c) { return c >= '0' && c <= '9'; })
+                || !html_dimension(value, size) || size > 64 || !attributes.emplace(attribute, true).second)
+                token.valid = false;
+            else if (attribute == "colspan") token.colspan = size;
+            else token.rowspan = size;
         }
     }
     token.valid = false; token.end = raw.size(); return token;
@@ -448,6 +466,10 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
     for (const auto& event : events) {
         if (event.text) {
             title_text(cmark_node_get_literal(event.text), stack.empty() ? -1 : stack.front().group);
+            if (!stack.empty() && (stack.back().name == "table" || html_table_section(stack.back().name)
+                || stack.back().name == "tr")
+                && std::string(cmark_node_get_literal(event.text)).find_first_not_of(" \t\r\n") != std::string::npos)
+                fail(stack.front().group, "text outside HTML table cell");
             continue;
         }
         auto& raw = raws[event.raw];
@@ -459,12 +481,18 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
             token.group = group;
             if (token.kind == HtmlToken::text) {
                 title_text(raw.literal.substr(token.begin, token.end-token.begin), group);
+                if (!stack.empty() && (stack.back().name == "table" || html_table_section(stack.back().name)
+                    || stack.back().name == "tr")
+                    && raw.literal.substr(token.begin, token.end-token.begin).find_first_not_of(" \t\r\n") != std::string::npos)
+                    fail(group, "text outside HTML table cell");
                 continue;
             }
             if (token.kind == HtmlToken::tag && token.name == "img") {
                 if (!stack.empty() && (stack.back().name == "summary"
                     || (stack.back().name == "details" && !details[stack.back().detail].header)))
                     fail(group, "unsupported image before or inside summary");
+                if (!stack.empty() && (stack.back().name == "table" || html_table_section(stack.back().name)
+                    || stack.back().name == "tr")) fail(group, "image outside HTML table cell");
                 if (!token.valid || token.closing || !token.has_src) token.image_error = "malformed img or missing src";
                 continue;
             }
@@ -485,8 +513,23 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
             }
             if (token.name == "br" && !stack.empty()
                 && (stack.back().name == "summary"
-                    || (stack.back().name == "details" && !details[stack.back().detail].header)))
-                fail(group, "unsupported break before or inside summary");
+                    || (stack.back().name == "details" && !details[stack.back().detail].header)
+                    || stack.back().name == "table" || html_table_section(stack.back().name)
+                    || stack.back().name == "tr"))
+                fail(group, "unsupported break outside HTML table cell or inside summary");
+            if (!token.closing && token.name != "br") {
+                const auto parent = stack.empty() ? std::string() : stack.back().name;
+                if ((token.name == "table" && !(parent.empty() || parent == "div"
+                    || (parent == "details" && details[stack.back().detail].header) || html_table_cell(parent)))
+                    || (html_table_section(token.name) && parent != "table")
+                    || (token.name == "caption" && parent != "table")
+                    || (token.name == "tr" && parent != "table" && !html_table_section(parent))
+                    || (html_table_cell(token.name) && parent != "tr")
+                    || ((parent == "table" || html_table_section(parent)) && !html_table_section(token.name)
+                        && token.name != "caption" && token.name != "tr")
+                    || (parent == "tr" && !html_table_cell(token.name)))
+                    fail(group, "invalid HTML table nesting");
+            }
             if (token.closing) {
                 if (token.name == "br" || stack.empty() || stack.back().name != token.name) {
                     fail(group, "invalid HTML nesting");
@@ -534,7 +577,8 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                     && (stack.back().name != "details" || !details[stack.back().detail].header)) {
                     fail(group, "invalid heading nesting");
                 } else if (token.name == "p" || token.name == "div") {
-                    for (const auto& open : stack) if (open.name != "div" && open.name != "details")
+                    for (const auto& open : stack) if (open.name != "div" && open.name != "details"
+                        && !html_table_cell(open.name))
                         fail(group, "invalid block nesting");
                 } else if (!stack.empty() && stack.back().name == "details" && !details[stack.back().detail].header)
                     fail(group, "summary must be the first details child");
@@ -686,11 +730,15 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
             } else {
                 html += "<" + token.name;
                 if (token.center) html += " style=\"text-align:center\"";
+                if (html_table_cell(token.name)) {
+                    if (token.colspan != 1) html += " colspan=\"" + std::to_string(token.colspan) + "\"";
+                    if (token.rowspan != 1) html += " rowspan=\"" + std::to_string(token.rowspan) + "\"";
+                }
                 if (marked) {
                     const int id = static_cast<int>(labels.size());
                     labels.push_back(Label{});
                     owners.push_back({id, token.name == "kbd" || token.name == "sup" || token.name == "sub"
-                        || token.name == "strong"});
+                        || token.name == "strong" || html_table_cell(token.name) || token.name == "caption"});
                     html += " data-mdview=\"" + std::to_string(id) + "\"";
                 }
                 html += ">";

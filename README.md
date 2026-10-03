@@ -172,7 +172,7 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 The preview enables a deliberately small, sanitized HTML subset by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
 `img` elements with `src`/`alt`, standalone `h1`–`h6`, inline `strong`,
-and structured `details`/`summary` pairs. A heading or paragraph with
+structured tables, and `details`/`summary` pairs. A heading or paragraph with
 `align="center"` is centered; other user-supplied alignment values are discarded.
 Inside a summary only, `<b>` is allowed, as is one direct `<h1>`–`<h6>`
 containing text, entities and `<b>`. For example,
@@ -187,11 +187,14 @@ For example, `<img src="assets/banner.png" width="320" alt="Banner">`
 renders a local image relative to the Markdown document. Image dimensions
 accept positive integer pixels, optionally suffixed `px`; one dimension
 preserves aspect ratio, two form a containment box. Invalid dimensions leave
-the original tag visible with a diagnostic. SVG, HTML tables, HTML links and
-arbitrary HTML are not included.
+the original tag visible with a diagnostic. HTML tables accept explicit
+`table`, `caption`, `thead`/`tbody`/`tfoot`, `tr`, `th`/`td` pairs and
+`colspan`/`rowspan` values 1–64; other attributes are discarded.
+Invalid nesting stays literal. SVG, HTML links and arbitrary HTML are not included.
 For a local Kitty check with generated wide/tall PNG fixtures, run
 `bash scripts/manual-dimensions split` from the checkout, or
 `bash scripts/manual-dimensions replace` after exiting the split.
+For HTML tables use `bash scripts/manual-tables split` or `replace`.
 
 Markdown in a details body follows cmark's HTML-block rules: leave a blank line
 after `</summary>` before headings or lists, or they may remain literal text.
