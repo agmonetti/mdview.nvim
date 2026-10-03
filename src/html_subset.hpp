@@ -31,7 +31,7 @@ static bool html_allowed(const std::string& name) {
     return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
         || name == "table" || name == "thead" || name == "tbody" || name == "tfoot" || name == "tr"
         || name == "th" || name == "td" || name == "caption"
-        || name == "details" || name == "summary" || name == "b" || name == "strong" || html_heading(name);
+        || name == "details" || name == "summary" || name == "b" || name == "strong" || name == "u" || html_heading(name);
 }
 static std::string html_attribute(const std::string& value) {
     std::string out;
@@ -738,7 +738,7 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                     const int id = static_cast<int>(labels.size());
                     labels.push_back(Label{});
                     owners.push_back({id, token.name == "kbd" || token.name == "sup" || token.name == "sub"
-                        || token.name == "strong" || html_table_cell(token.name) || token.name == "caption"});
+                        || token.name == "strong" || token.name == "u" || html_table_cell(token.name) || token.name == "caption"});
                     html += " data-mdview=\"" + std::to_string(id) + "\"";
                 }
                 html += ">";

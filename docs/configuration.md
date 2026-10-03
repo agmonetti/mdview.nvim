@@ -136,9 +136,10 @@ ordinary quote fails without alerts; two-space hard breaks are regression-covere
 
 Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
 closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, standalone
-`h1`–`h6`, inline `strong`, complete `<!-- comments -->`, local
+`h1`–`h6`, inline `strong` and `u`, complete `<!-- comments -->`, local
 `<img src="local/path" alt="...">`, structured tables, and `<details>` with a
-nonempty first direct `<summary>`. `<b>` is allowed only inside summary;
+nonempty first direct `<summary>`. `<u>text</u>` underlines text; supplied
+attributes on it are discarded. `<b>` is allowed only inside summary;
 alternatively, a summary may contain exactly one direct `<h1>`–`<h6>` with
 text, entities and `<b>`. The summary heading keeps its level but not its block
 margins. Nested/multiple summary headings, `<strong>` or `<p>` inside summary

@@ -11,6 +11,7 @@ p, ul, ol, blockquote, pre, table { margin-top: 0; margin-bottom: 20px; }
 li { margin-bottom: 6px; }
 a { color: #58a6ff; text-decoration: none; }
 strong { font-weight: 700; }
+u { text-decoration: underline; }
 code, pre { font-family: monospace; font-size: 15px; }
 code { color: #e6edf3; background-color: #30363d; padding: 2px 5px; border-radius: 3px; }
 pre { background-color: #161b22; padding: 16px; border-radius: 6px; }

@@ -171,9 +171,11 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 
 The preview enables a deliberately small, sanitized HTML subset by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
-`img` elements with `src`/`alt`, standalone `h1`–`h6`, inline `strong`,
-structured tables, and `details`/`summary` pairs. A heading or paragraph with
-`align="center"` is centered; other user-supplied alignment values are discarded.
+`img` elements with `src`/`alt`, standalone `h1`–`h6`, inline `strong` and `u`,
+structured tables, and `details`/`summary` pairs. For example,
+`<u>Response time:</u>` underlines that label in a Markdown list.
+A heading or paragraph with `align="center"` is centered; other user-supplied
+alignment values are discarded.
 Inside a summary only, `<b>` is allowed, as is one direct `<h1>`–`<h6>`
 containing text, entities and `<b>`. For example,
 `<summary><h3>Title</h3></summary>` keeps the heading size without its normal

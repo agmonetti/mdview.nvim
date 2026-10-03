@@ -98,8 +98,8 @@ committing; run additional checks for affected features.
 ## Closed HTML subset
 
 The production worker enables a closed, sanitized HTML allowlist by default:
-`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
-`img src`/`alt`/`width`/`height`, and structured `details`/`summary` pairs.
+`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, inline `u`, complete comments,
+local `img src`/`alt`/`width`/`height`, and structured `details`/`summary` pairs.
 Supplied attributes are discarded other than those image attributes;
 `<b>` is summary-only and `span` is unwrapped. One direct `<h1>`–`<h6>` per
 summary accepts text/entities/`<b>`;
@@ -107,6 +107,9 @@ other raw headings and invalid summary content remain literal. Unsupported or
 malformed fragments are escaped as literal source with line/column diagnostics,
 without aborting unrelated content. `setup({html=false})` opts back into explicit
 raw-HTML rejection.
+
+`python3 tests/html/underline_check.py` checks list wrapping, source anchors,
+plain/marked pixel parity, visible underlines, malformed fallback and opt-out.
 
 Implementation is in `src/html_subset.hpp` and `src/html_images.hpp`, integrated
 into `src/preview.cpp`; `lua/mdview/init.lua` sends the opt-out over the existing
@@ -152,6 +155,14 @@ exercises the reported centered-banner shape, its line-2 anchor and following
 heading; the original remote image remains unavailable and is not fetched.
 `tests/mermaid.lua` covers a supported ER fence beside a literal unsupported
 flowchart, subsequent text, and an independently failing malformed ER diagram.
+
+An indented lazy paragraph continuation such as `User -> Backend` followed by
+`                -> Elasticsearch` can have cmark source columns relative to
+stripped indentation. The native mapper now uses the physical byte range only
+when the entire text literal matches that line; `tests/plugin.lua` checks the
+reported line-31 arrow, following heading, and a completed DRAW. This fixes
+attribution failure, not Markdown's paragraph/code-block interpretation. Use a
+fenced code block with blank separation when the diagram must retain spacing.
 
 Excluded scope includes arbitrary HTML, SVG local images, `picture`/`source`,
 HTML links and remote resources. HTML image dimensions and closed HTML tables
