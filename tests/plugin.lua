@@ -53,6 +53,41 @@ local function check()
   local disabled=vim.system({root .. "/build/mdview-preview", "--html", subset, root .. "/styles/markdown.css", "plain", "html=0"},
     {text=true}):wait()
   assert(disabled.code~=0 and disabled.stderr:find("Raw HTML",1,true), "html=0 did not restore raw HTML rejection")
+  local centered=directory .. "/centered.md"
+  vim.fn.writefile({"<h1 align=\"center\">Disambiguator</h1>", "",
+    "<p align=\"center\">A zero-dependency prompt <strong>before any action is taken</strong>, safely.</p>",
+    "", "## Following"}, centered)
+  local centered_html=command({root .. "/build/mdview-preview", "--html", centered, root .. "/styles/markdown.css", "marked"})
+  assert(centered_html:find('<h1 style="text-align:center"',1,true)
+    and centered_html:find('<p style="text-align:center"',1,true)
+    and centered_html:find("<strong data-mdview=",1,true)
+    and not centered_html:find("&lt;h1",1,true), "centered heading/paragraph and emphasis fell back to literals")
+  local center_load=table.concat({"LOAD", 1, 700, hexpath(centered), hexpath(directory),
+    hexpath(root .. "/styles/markdown.css")}, " ")
+  local center_result=command({root .. "/build/mdview-preview"}, center_load
+    .. "\nDRAW 1 1 0 0 0 400 " .. hexpath(directory .. "/centered.png") .. "\nQUIT\n")
+  assert(center_result:find("FRAG 1 ",1,true) and center_result:find("FRAG 3 ",1,true)
+    and center_result:find("FRAG 5 ",1,true), "centered content lost heading/body/following source anchors")
+  for _, mode in ipairs({"plain","marked"}) do
+    local html=command({root .. "/build/mdview-preview","--html",centered,root .. "/styles/markdown.css",mode})
+    local htmlpath=directory .. "/centered-" .. mode .. ".html"
+    local f=assert(io.open(htmlpath,"wb")); assert(f:write(html)); f:close()
+    vim.fn.writefile({"bestfit: false","width: 700","height: 400"},htmlpath .. ".cfg")
+    command({root .. "/build/mdview-render",htmlpath,directory .. "/centered-" .. mode .. ".png","700"})
+  end
+  local center_parity=vim.system({"magick","compare","-metric","AE",directory .. "/centered-plain.png",
+    directory .. "/centered-marked.png","null:"},{text=true}):wait()
+  assert(tonumber(center_parity.stderr:match("^[%d.]+"))==0,
+    "centered HTML source annotations changed pixels: " .. center_parity.stderr)
+  local uncentered=directory .. "/uncentered.md"
+  vim.fn.writefile({"<h1>Disambiguator</h1>", "",
+    "<p>A zero-dependency prompt before any action is taken, safely.</p>", "", "## Following"}, uncentered)
+  command({root .. "/build/mdview-preview"}, table.concat({"LOAD", 1, 700, hexpath(uncentered),
+    hexpath(directory), hexpath(root .. "/styles/markdown.css")}, " ")
+    .. "\nDRAW 1 1 0 0 0 400 " .. hexpath(directory .. "/uncentered.png") .. "\nQUIT\n")
+  local changed=vim.system({"magick","compare","-metric","AE",directory .. "/centered.png",
+    directory .. "/uncentered.png","null:"},{text=true}):wait()
+  assert(tonumber(changed.stderr:match("^[%d.]+"))>0,"alignment/emphasis did not affect raster pixels")
   local html_image=directory .. "/html-image.md"
   vim.fn.writefile({"Before <img src=\"local image.png\" alt=\"HTML pixel\"> after", "", "# HTML image tail"}, html_image)
   local html_image_load=table.concat({"LOAD", 1, 700, hexpath(html_image), hexpath(directory),

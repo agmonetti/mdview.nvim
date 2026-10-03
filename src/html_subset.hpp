@@ -8,6 +8,7 @@ struct HtmlToken {
     uint32_t requested_width = 0, requested_height = 0;
     bool has_width = false, has_height = false;
     bool has_src = false;
+    bool center = false;
     bool closing = false, self = false, valid = true;
     int group = -1;
     int detail = -1;
@@ -27,7 +28,7 @@ static bool html_heading(const std::string& name) {
 }
 static bool html_allowed(const std::string& name) {
     return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
-        || name == "details" || name == "summary" || name == "b" || html_heading(name);
+        || name == "details" || name == "summary" || name == "b" || name == "strong" || html_heading(name);
 }
 static std::string html_attribute(const std::string& value) {
     std::string out;
@@ -110,6 +111,9 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
                 value = raw.substr(start, i-start);
             }
         } else separated = space_after;
+        if (!token.closing && (token.name == "p" || html_heading(token.name))
+            && attribute == "align" && has_value && html_attribute(value) == "center")
+            token.center = true;
         if (token.name == "img" && (attribute == "src" || attribute == "alt")) {
             if (!has_value) token.valid = false;
             if (attribute == "src") { token.src = html_attribute(value); token.has_src = has_value; }
@@ -471,9 +475,11 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                 fail(group, "b is only allowed inside summary text or heading");
                 continue;
             }
-            if (html_heading(token.name) && !token.closing) {
-                if (stack.empty() || stack.back().name != "summary" || stack.back().detail < 0
-                    || stack.back().heading_count || details[stack.back().detail].title)
+            if (token.name == "strong" && (summary_heading()
+                || (!stack.empty() && (stack.back().name == "summary" || stack.back().name == "b"))))
+                fail(group, "strong is not allowed inside summary");
+            if (html_heading(token.name) && !token.closing && !stack.empty() && stack.back().name == "summary") {
+                if (stack.back().detail < 0 || stack.back().heading_count || details[stack.back().detail].title)
                     fail(group, "heading is only allowed as the sole summary child");
                 else ++stack.back().heading_count;
             }
@@ -521,9 +527,12 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                     }
                 } else if (token.name != "b" && !html_heading(token.name) && !stack.empty()
                     && (stack.back().name == "summary" || stack.back().name == "b" || html_heading(stack.back().name))) {
-                    fail(group, "unsupported tag inside summary");
-                } else if (html_heading(token.name) && (stack.empty() || stack.back().name != "summary")) {
-                    fail(group, "heading is only allowed as the sole summary child");
+                    if (token.name != "strong" || !html_heading(stack.back().name) || summary_heading())
+                        fail(group, "unsupported tag inside summary or heading");
+                } else if (html_heading(token.name) && !stack.empty()
+                    && stack.back().name != "summary" && stack.back().name != "div"
+                    && (stack.back().name != "details" || !details[stack.back().detail].header)) {
+                    fail(group, "invalid heading nesting");
                 } else if (token.name == "p" || token.name == "div") {
                     for (const auto& open : stack) if (open.name != "div" && open.name != "details")
                         fail(group, "invalid block nesting");
@@ -676,10 +685,12 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                 if (marked) owners.pop_back();
             } else {
                 html += "<" + token.name;
+                if (token.center) html += " style=\"text-align:center\"";
                 if (marked) {
                     const int id = static_cast<int>(labels.size());
                     labels.push_back(Label{});
-                    owners.push_back({id, token.name == "kbd" || token.name == "sup" || token.name == "sub"});
+                    owners.push_back({id, token.name == "kbd" || token.name == "sup" || token.name == "sub"
+                        || token.name == "strong"});
                     html += " data-mdview=\"" + std::to_string(id) + "\"";
                 }
                 html += ">";

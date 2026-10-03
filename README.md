@@ -171,14 +171,17 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 
 The preview enables a deliberately small, sanitized HTML subset by default:
 `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
-`img` elements with `src`/`alt`, and structured `details`/`summary` pairs.
+`img` elements with `src`/`alt`, standalone `h1`–`h6`, inline `strong`,
+and structured `details`/`summary` pairs. A heading or paragraph with
+`align="center"` is centered; other user-supplied alignment values are discarded.
 Inside a summary only, `<b>` is allowed, as is one direct `<h1>`–`<h6>`
 containing text, entities and `<b>`. For example,
 `<summary><h3>Title</h3></summary>` keeps the heading size without its normal
 block margins. Nested or multiple headings and `<p>` inside `<summary>` fall
-back to literal text. Outside a summary, raw HTML headings remain literal.
+back to literal text. `<strong>` is not allowed inside summaries.
 Unsupported fragments do not abort the document. User-supplied attributes
-are discarded except image `src`, `alt`, `width` and `height`. Remote
+are discarded except recognized center alignment and image `src`, `alt`,
+`width` and `height`. Remote
 `https://...` images remain literal, not fetched.
 For example, `<img src="assets/banner.png" width="320" alt="Banner">`
 renders a local image relative to the Markdown document. Image dimensions

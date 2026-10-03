@@ -135,15 +135,16 @@ ordinary quote fails without alerts; two-space hard breaks are regression-covere
 ## Closed HTML subset
 
 Raw HTML is enabled by default, but arbitrary HTML is never passed through. The
-closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete
-`<!-- comments -->`, local `<img src="local/path" alt="...">`, and structured
-`<details>` with a nonempty first direct `<summary>`. `<b>` is allowed only inside
-summary; alternatively, a summary may contain exactly one direct `<h1>`–`<h6>`
-with text, entities and `<b>`. The heading keeps its level but not its block
-margins. Other raw headings, mixed summary content, nested/multiple headings
-and `<p>` inside summary fall back to literal text. Wrappers and text discard
-user attributes; only local image `src`, `alt`, `width` and `height` survive.
-`span` is unwrapped.
+closed allowlist is `br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, standalone
+`h1`–`h6`, inline `strong`, complete `<!-- comments -->`, local
+`<img src="local/path" alt="...">`, and structured `<details>` with a nonempty
+first direct `<summary>`. `<b>` is allowed only inside summary; alternatively,
+a summary may contain exactly one direct `<h1>`–`<h6>` with text, entities
+and `<b>`. The summary heading keeps its level but not its block margins.
+Nested/multiple summary headings, `<strong>` or `<p>` inside summary fall back
+to literal text. `align="center"` on headings or paragraphs becomes fixed
+center alignment; other supplied attributes are discarded. Only local image
+`src`, `alt`, `width` and `height` survive; `span` is unwrapped.
 Unsupported/malformed tags, invalid nesting, incomplete comments and unusable
 HTML images are escaped as literal source with localized stderr diagnostics,
 so unrelated document content remains visible.

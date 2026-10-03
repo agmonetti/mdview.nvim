@@ -62,7 +62,6 @@ local function check()
     assert(tonumber(compared.stderr:match("^[%d.]+"))==0,"details source labels changed rendered pixels at "..width)
   end
   local boundaries={
-    {"<h3>Outside</h3>",false},
     {"<details>\n<summary><h3>A</h3><h4>B</h4></summary>\nBody\n</details>",false},
     {"<details>\n<summary><h3><h4>A</h4></h3></summary>\nBody\n</details>",false},
     {"<details>\n<summary><p>A</p></summary>\nBody\n</details>",false},
