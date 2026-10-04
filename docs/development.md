@@ -353,7 +353,7 @@ Automatic diagram presentation was user-accepted in both modes with a relationsh
 label overlap limitation, and the reader interactive checklist passed. Split
 cursor-follow has native/headless and TUI evidence with image display mocked;
 its real-Kitty visual acceptance remains pending. See the
-[Mermaid report](../MERMAID-RESEARCH.md) for chronology and tested boundaries.
+[Mermaid report](mermaid-research.md) for chronology and tested boundaries.
 
 The historical standalone PNG inspection needs generated evaluation artifacts:
 

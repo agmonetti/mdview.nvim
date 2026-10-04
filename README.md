@@ -1,12 +1,19 @@
 # mdview.nvim
 
-Native Markdown preview inside Neovim: a full-window reader or a source/preview
-split, updated from unsaved buffer contents. It renders through Kitty graphics
-instead of opening a browser.
+Native Markdown preview in Neovim, updated from unsaved buffer contents and
+displayed through Kitty graphics.
+
+**Two ways to read:** replace the source window with a scrollable reader, or keep
+Markdown and preview side by side. Both update from unsaved edits.
+
+| Reader | Split |
+| --- | --- |
+| Full-window raster; navigate with familiar Vim keys. | Source stays editable; preview follows scrolling and cursor. |
+
+The output is a raster: text cannot be selected and links are not clickable.
 
 Runtime pipeline: `cmark-gfm → HTML/CSS → litehtml + Cairo/Pango → Kitty`.
-No browser, Node.js or Python runtime is required by the plugin. The output is
-rasterized: text selection and clickable links are not available.
+The plugin does not require a browser, Node.js or Python at runtime.
 
 **Experimental, Linux/Kitty-focused.** Reader, split, document palettes and
 lower-layer popup compositing have user-reported real-Kitty use; compatibility
@@ -169,43 +176,44 @@ collapsible admonitions are not supported. See [alert configuration](docs/config
 
 ## Closed HTML subset
 
-The preview enables a deliberately small, sanitized HTML subset by default:
-`br`, `kbd`, `sup`, `sub`, `span`, `p`, `div`, complete comments, local
-`img` elements with `src`/`alt`, standalone `h1`–`h6`, inline `strong` and `u`,
-structured tables, and `details`/`summary` pairs. For example,
-`<u>Response time:</u>` underlines that label in a Markdown list.
-A heading or paragraph with `align="center"` is centered; other user-supplied
-alignment values are discarded.
-Inside a summary only, `<b>` is allowed, as is one direct `<h1>`–`<h6>`
-containing text, entities and `<b>`. For example,
-`<summary><h3>Title</h3></summary>` keeps the heading size without its normal
-block margins. Nested or multiple headings and `<p>` inside `<summary>` fall
-back to literal text. `<strong>` is not allowed inside summaries.
-Unsupported fragments do not abort the document. User-supplied attributes
-are discarded except recognized center alignment and image `src`, `alt`,
-`width` and `height`. Remote
-`https://...` images remain literal, not fetched.
-For example, `<img src="assets/banner.png" width="320" alt="Banner">`
-renders a local image relative to the Markdown document. Image dimensions
-accept positive integer pixels, optionally suffixed `px`; one dimension
-preserves aspect ratio, two form a containment box. Invalid dimensions leave
-the original tag visible with a diagnostic. HTML tables accept explicit
-`table`, `caption`, `thead`/`tbody`/`tfoot`, `tr`, `th`/`td` pairs and
-`colspan`/`rowspan` values 1–64; other attributes are discarded.
-Invalid nesting stays literal. SVG, HTML links and arbitrary HTML are not included.
-For a local Kitty check with generated wide/tall PNG fixtures, run
-`bash scripts/manual-dimensions split` from the checkout, or
-`bash scripts/manual-dimensions replace` after exiting the split.
-For HTML tables use `bash scripts/manual-tables split` or `replace`.
+Raw HTML is enabled by default, but only these structures are sanitized and
+rendered:
 
-Markdown in a details body follows cmark's HTML-block rules: leave a blank line
-after `</summary>` before headings or lists, or they may remain literal text.
-Missing/empty summaries and invalid nesting fall back to escaped text.
+| Content | Supported markup | Notes |
+| --- | --- | --- |
+| Inline formatting | `br`, `kbd`, `sup`, `sub`, `span`, `strong`, `u` | `span` is unwrapped; other attributes are discarded. |
+| Blocks | `p`, `div`, standalone `h1`–`h6` | `align="center"` is honored on headings and paragraphs only. |
+| Images | Local `<img src="…" alt="…">` | Relative to the Markdown file; optional `width` and `height`. Remote URLs are not fetched. |
+| Tables | `table`, `caption`, `thead`/`tbody`/`tfoot`, `tr`, `th`/`td` | Only `colspan` and `rowspan` are honored; values are 1–64. |
+| Disclosure | `<details>` with a nonempty first `<summary>` | Summary permits `<b>` or one direct heading containing text, entities and `<b>`. |
 
-Disable raw HTML explicitly with `require("mdview").setup({ html = false })`;
-Markdown images keep their existing loader and format behavior. See the
-[HTML policy and image limits](docs/configuration.md#closed-html-subset) and
-[development evidence](docs/development.md#closed-html-subset).
+Nested or multiple summary headings, `<strong>` and `<p>` inside `<summary>` are
+not supported; those fragments stay literal.
+
+Image dimensions are positive integer pixels, optionally suffixed `px`. One
+dimension preserves aspect ratio; two specify a containment box. Invalid
+dimensions, unsupported markup and invalid nesting remain visible as escaped
+source, with a diagnostic where applicable; they do not discard the rest of the
+document. Complete comments are ignored. SVG, HTML links and arbitrary HTML are
+not supported.
+
+```html
+<p align="center"><strong>Release notes</strong></p>
+<img src="assets/banner.png" width="320" alt="Banner">
+```
+
+For details content, leave a blank line after `</summary>` before Markdown
+headings or lists; otherwise cmark may treat them as literal text. To reject raw
+HTML instead of applying this subset, use
+`require("mdview").setup({ html = false })`. Markdown images retain their
+existing loader and format behavior.
+
+Local Kitty probes: `bash scripts/manual-dimensions split|replace` for image
+sizing; `bash scripts/manual-tables split|replace` for tables. Exit the first
+Neovim session before starting the second mode.
+
+See the [HTML policy and image limits](docs/configuration.md#closed-html-subset)
+and [development evidence](docs/development.md#closed-html-subset).
 
 ## Interactive details
 
@@ -254,8 +262,8 @@ Restart Neovim after building/configuring. Malformed supported diagrams and othe
 render failures identify the opening source line and recover after correction;
 unsupported diagram families instead stay literal. Large graphs may exceed resource
 limits.
-See the [Mermaid configuration](docs/configuration.md#mermaid) and
-[evaluation and integration report](MERMAID-RESEARCH.md) for limits and compatibility.
+See [Mermaid configuration](docs/configuration.md#mermaid) and the
+[evaluation and integration report](docs/mermaid-research.md) for limits and compatibility.
 
 ## Limitations
 
@@ -301,7 +309,8 @@ fail for long files.
   not measure physical touchpad input or screen presentation.
 - [Performance and historical evidence](REPORT.md): retained results, decisions,
   measurement limitations and earlier prototypes.
-- [Mermaid research](MERMAID-RESEARCH.md): pinned renderer evaluation and integration.
+- [Mermaid evaluation and integration](docs/mermaid-research.md): compatibility,
+  visual limitations and retained evidence.
 
 Core dependencies: [cmark-gfm](https://github.com/github/cmark-gfm),
 [litehtml v0.10 Cairo adapter](https://github.com/litehtml/litehtml/tree/v0.10/containers/cairo),

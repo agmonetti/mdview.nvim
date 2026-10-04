@@ -65,7 +65,7 @@ regenerating diagrams; width changes reflow layout.
 Native pixel/resize/cursor regressions and natural Neovim TUI events have been
 exercised with image display mocked. Real-Kitty visual acceptance of cursor follow
 remains pending; exact alignment across arbitrary conceal/virtual text is not
-certified. The [Mermaid report](../MERMAID-RESEARCH.md) retains that evidence.
+certified. The [Mermaid report](mermaid-research.md) retains that evidence.
 
 ## Document themes and custom CSS
 
@@ -345,7 +345,7 @@ and remains a renderer layout limitation.
 PNG headers are checked before decoding. The child address-space cap covers opaque
 intermediate allocations, but is not evidence of low peak memory or an executable
 sandbox. Caps can reject large graphs; they do not bound whole-document Markdown
-layout. Use a trusted renderer executable. [Research and runtime evidence](../MERMAID-RESEARCH.md)
+layout. Use a trusted renderer executable. [Research and runtime evidence](mermaid-research.md)
 record tested semantics, visuals, cancellation and resource behavior.
 
 ## Advanced environment controls
