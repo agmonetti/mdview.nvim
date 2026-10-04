@@ -17,8 +17,8 @@ are different kinds of evidence; do not substitute one for another.
 | `src/preview.cpp`, `src/mermaid.hpp` | Persistent native Markdown worker and optional diagram subprocess integration. |
 | `src/main.cpp`, `scripts/md2png` | Standalone full-document PNG CLI. |
 | `styles/markdown.css` | Stock document stylesheet. |
-| `scripts/build.sh`, `CMakeLists.txt` | Native build using the litehtml v0.10 Cairo adapter and system libraries. |
-| `tests/*.lua`, `tests/smoke.sh` | Regression checks. |
+| `tests/*.lua`, `tests/*.py`, `tests/smoke.sh` | Regression checks and native Markdown corpus validation. |
+| `tests/fixtures/` | Versioned Markdown edge cases used by `tests/corpus_check.py`. |
 | `tests/bench/`, `scripts/bench-scroll`, `scripts/bench-diagnose` | Frozen benchmark fixture, instrumentation and launchers. |
 | `tests/merman/`, `scripts/build-mermaid` | Optional pinned Merman build and evaluation. |
 
@@ -33,11 +33,60 @@ With the existing native build and ImageMagick available:
 ```bash
 ./tests/smoke.sh
 nvim --headless -u NONE -l tests/plugin.lua
+python3 tests/corpus_check.py
 nvim --headless -u NONE -l tests/theme.lua
 nvim --headless -u NONE -l tests/cursor.lua
 nvim --headless -u NONE -l tests/alerts.lua
 nvim --headless -u NONE -l tests/details.lua
 ```
+
+`tests/corpus_check.py` always checks the versioned fixtures and recursively adds
+local Markdown files from ignored `tests/corpus-local/`; pass another directory
+as its optional argument. It renders marked HTML at a fixed 900 px width through
+both native paths, compares the worker viewport against the matching standalone
+PNG crop with ImageMagick, and checks output dimensions, repeat hashes and
+repeatable in-bounds `FRAG` anchors.
+Diagnostics from localized HTML fallback are warnings; process crashes,
+conversion/layout errors, invalid anchors and nondeterministic output fail the run.
+The report is written to `<corpus>/corpus-report.json` (default:
+`tests/corpus-local/corpus-report.json`). Copy a minimal reproducer into
+`tests/fixtures/` before treating it as a permanent regression.
+This is a deterministic corpus smoke check, not an independent pixel-to-source
+coordinate oracle or proof of arbitrary-Markdown support.
+
+
+### One-time local Markdown corpus sweep — 2026-10-03
+
+Enumerated `~/Documentos` recursively and copied **4,742 `.md` files
+(39,908,565 bytes)** into the ignored `tests/corpus-local/`, preserving their
+relative paths. SHA-256 comparison verified every copied file against its
+source. The copies were later deleted at the user's request; originals were
+never modified. The ignored path remains available for a future local corpus.
+
+The batch run used the then-current snapshot of **4,741 local files plus four
+versioned fixtures**. It reached 4,400/4,745 documents and hit its 3,600-second
+timeout, so there is no final pass/fail total. It exposed a SIGSEGV: cmark can
+produce generated email-autolink nodes with empty source ranges. The native
+mapper now guards invalid ranges and leaves ambiguous/missing source fragments
+visible but unanchored instead of inventing `FRAG` coordinates.
+`tests/fixtures/autolink-email.md` preserves the minimal regression.
+
+After that fix, the four versioned fixtures passed, as did a focused batch of
+four formerly crashing copied documents plus those fixtures (8/8; one emitted
+a localized fallback warning). `tests/plugin.lua` and `tests/smoke.sh` passed.
+The full scan also encountered unsupported HTML/source projection, documents
+that exceed standalone full-raster rendering limits, and source-attribution
+failures. These remain limitations, not corpus-wide acceptance. The batch was
+stopped by timeout before the final two Markdown files were synchronized; the
+complete 4,742-file copy was SHA-256-verified afterward and then removed. The
+batch also predated the final CLI/worker decoded-pixel parity check. No claim
+that all documents render successfully.
+
+The old harness's duplicate-`FRAG` rejection was removed because unique
+coordinates are not a declared protocol invariant; current checks validate
+source bounds and repeatability without requiring unique anchors. The final
+harness still runs versioned fixtures alone when `tests/corpus-local/` is
+absent.
 
 The optional real-Merman check additionally needs the explicitly built evaluation
 binary; it does not download/build Merman automatically:

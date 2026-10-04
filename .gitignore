@@ -26,3 +26,4 @@ tests/bench/results/native-profile/*
 !tests/bench/results/native-profile/*.jsonl
 !tests/bench/results/native-profile/*.snapshot.md
 !tests/bench/results/native-profile/*.snapshot.css
+tests/corpus-local/

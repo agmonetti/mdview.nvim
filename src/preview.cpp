@@ -113,7 +113,26 @@ class Markdown {
     }
     Label original_label(cmark_node* node, const std::string& text, bool code = false) {
         Label result{text, {}};
+        if (text.empty()) return result;
         int start = cmark_node_get_start_line(node), end = cmark_node_get_end_line(node);
+        // cmark's generated email-autolink text can have no source span at all.
+        // Resolve only a unique literal occurrence; never index lines with line 0.
+        if (start < 1 || end < start || end > static_cast<int>(lines.size())) {
+            Position match{};
+            bool found = false;
+            for (size_t line = 0; !text.empty() && line < lines.size(); ++line) {
+                size_t column = lines[line].find(text);
+                if (column == std::string::npos) continue;
+                if (found || lines[line].find(text, column + 1) != std::string::npos)
+                    return result;
+                match = {static_cast<int>(line + 1), static_cast<int>(column)};
+                found = true;
+            }
+            if (!found) return result;
+            for (size_t column = 0; column < text.size(); ++column)
+                result.positions.push_back({match.line, match.column + static_cast<int>(column)});
+            return result;
+        }
         std::string raw;
         std::vector<Position> positions;
         for (int n = start; n <= end && n <= static_cast<int>(lines.size()); ++n) {
@@ -328,11 +347,18 @@ class Markdown {
                 std::string text = cmark_node_get_literal(node);
                 std::string html;
                 if (type == CMARK_NODE_CODE) {
-                    // A nested span changes inline-code wrap geometry. Label the original code element.
-                    const auto id = labels.size();
-                    labels.push_back(label(node, text, true));
-                    html = "<code data-mdview=\"" + std::to_string(id) + "\">" + escape(text) + "</code>";
-                } else html = html_bare_text.count(node) ? escape(text) : span(label(node, text));
+                    auto value = label(node, text, true);
+                    if (value.positions.empty()) html = "<code>" + escape(text) + "</code>";
+                    else {
+                        const auto id = labels.size();
+                        labels.push_back(std::move(value));
+                        html = "<code data-mdview=\"" + std::to_string(id) + "\">" + escape(text) + "</code>";
+                    }
+                } else if (html_bare_text.count(node)) html = escape(text);
+                else {
+                    auto value = label(node, text);
+                    html = value.positions.empty() ? escape(text) : span(std::move(value));
+                }
                 auto replacement = cmark_node_new(CMARK_NODE_HTML_INLINE);
                 cmark_node_set_literal(replacement, html.c_str());
                 if (!cmark_node_replace(node, replacement)) { cmark_node_free(replacement); throw std::runtime_error("Cannot label inline node"); }
