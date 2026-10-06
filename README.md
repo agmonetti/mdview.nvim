@@ -1,5 +1,7 @@
 # mdview.nvim
 
+![Animated mdview demo](assets/demo.gif)
+
 Native Markdown preview in Neovim, updated from unsaved buffer contents and
 displayed through Kitty graphics.
 
