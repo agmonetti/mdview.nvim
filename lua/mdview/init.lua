@@ -176,6 +176,8 @@ function M.close()
   local s = session
   if not s then return end
   session = nil
+  s.warning_signature = nil
+  if s.attribution_published and api.nvim_buf_is_valid(s.source_buf) then vim.diagnostic.reset(s.attribution_ns, s.source_buf) end
   if s.mouse_namespace then vim.on_key(nil, s.mouse_namespace) end
   if s.smooth_timer then s.smooth_timer:stop(); s.smooth_timer:close(); s.smooth_timer=nil end
   if s.layer then s.layer.close() end
@@ -290,7 +292,8 @@ function M.open(mode)
   vim.wo[preview_win].fillchars = "eob: "
 
   local s = { mode=mode, source_win=source_win, source_buf=source_buf, preview_win=preview_win, preview_buf=preview_buf,
-    saved_win_opts=saved_win_opts, directory=directory, group=api.nvim_create_augroup("mdview.session", {clear=true}), revision=0, sequence=0,
+    attribution_ns=api.nvim_create_namespace("mdview.attribution"), saved_win_opts=saved_win_opts, directory=directory,
+    group=api.nvim_create_augroup("mdview.session", {clear=true}), revision=0, sequence=0,
     dirty=true, busy=false, loaded=false, pending="", fragments={}, error=nil, tick=-1, initial_line=initial_line,
     current_y=0, initialized_y=false, raw=raw_supported, raw_image_id=raw_image_id, smooth=smooth,
     details={}, detail_changes={}, selected_detail=nil }
@@ -433,6 +436,8 @@ function M.open(mode)
         s.detail_changes[id] = nil
         if detail and detail.open ~= desired then
           s.revision = s.revision + 1
+          if s.attribution_published then vim.diagnostic.reset(s.attribution_ns, source_buf); s.attribution_published=false end
+          s.pending_warnings, s.warning_revision = {}, s.revision
           s.busy, s.loaded, s.last_key = true, false, nil
           s.next_details = {}
           s.fragments = {}
@@ -457,6 +462,8 @@ function M.open(mode)
       s.source_lines = next_lines
       s.detail_top, s.detail_position, s.detail_anchor = nil, nil, nil
       s.revision = s.revision + 1
+      if s.attribution_published then vim.diagnostic.reset(s.attribution_ns, source_buf); s.attribution_published=false end
+      s.pending_warnings, s.warning_revision = {}, s.revision
       s.tick, s.width, s.height = tick, w, h
       s.snapshot = directory .. "/snapshot.md"
       vim.fn.writefile(s.source_lines, s.snapshot)
@@ -593,7 +600,25 @@ function M.open(mode)
     if not valid() then return end
     local parts = vim.split(line, " ", {trimempty=true})
     local op = parts[1]
-    if op == "FRAG" then
+    if op == "WARN" then
+      if #parts ~= 5 or not parts[2]:match("^%d+$") or not parts[3]:match("^%d+$") or not parts[4]:match("^%d+$")
+        or #parts[5] > 512 or (parts[5] ~= "-" and (parts[5]:find("[^%x]") or #parts[5] % 2 ~= 0)) then
+        error("Invalid attribution warning")
+      end
+      local revision, first, last = tonumber(parts[2]), tonumber(parts[3]), tonumber(parts[4])
+      if revision ~= s.revision or not s.busy or revision ~= s.warning_revision then return end
+      if first < 1 or last < first or last > api.nvim_buf_line_count(source_buf) or #s.pending_warnings >= 64 then
+        error("Invalid attribution warning range")
+      end
+      local message = unhex(parts[5])
+      if message == "" or #message > 256 then error("Invalid attribution warning message") end
+      for _, warning in ipairs(s.pending_warnings) do
+        if warning.lnum == first-1 and warning.end_lnum == last and warning.message == message then return end
+      end
+      s.pending_warnings[#s.pending_warnings+1] = {lnum=first-1, end_lnum=last, col=0, end_col=0,
+        severity=vim.diagnostic.severity.WARN, source="mdview", message=message}
+      return
+    elseif op == "FRAG" then
       s.fragments[#s.fragments+1] = {line=tonumber(parts[2]), column=tonumber(parts[3]), finish=tonumber(parts[4]), y=tonumber(parts[5])}
       return
     end
@@ -636,6 +661,25 @@ function M.open(mode)
         s.detail_anchor=nil
       end
       vim.fn.delete(s.snapshot)
+      if tonumber(parts[2]) == s.revision then
+        if #s.pending_warnings > 0 then
+          vim.diagnostic.set(s.attribution_ns, source_buf, s.pending_warnings, {})
+          s.attribution_published = true
+          local signature = {}
+          for _, warning in ipairs(s.pending_warnings) do
+            signature[#signature+1] = table.concat({warning.lnum, warning.end_lnum, warning.message}, ":")
+          end
+          signature = table.concat(signature, "|")
+          if signature ~= s.warning_signature then
+            s.warning_signature = signature
+            local warning = s.pending_warnings[1]
+            vim.notify("mdview: Line " .. (warning.lnum + 1) .. ": " .. warning.message, vim.log.levels.WARN)
+          end
+        else
+          s.warning_signature = nil
+        end
+      end
+      s.warning_revision = nil
       if s.mode == "replace" and not s.initialized_y then
         local init_y, initial_anchor = 0, 0
         if s.initial_line > 1 then
@@ -728,7 +772,10 @@ function M.open(mode)
   })
   if s.job <= 0 then M.close(); return notify("Cannot start renderer") end
   api.nvim_buf_attach(source_buf, false, {
-    on_lines=function() if session ~= s then return true end; debounce(200, true) end,
+    on_lines=function()
+      if session ~= s then return true end
+      debounce(200, true)
+    end,
     on_detach=function() vim.schedule(function() if session == s then M.close() end end) end,
   })
   if theme == "nvim" then

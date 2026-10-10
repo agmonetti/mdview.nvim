@@ -32,6 +32,7 @@ With the existing native build and ImageMagick available:
 
 ```bash
 ./tests/smoke.sh
+nvim --headless -u NONE -l tests/attribution.lua
 nvim --headless -u NONE -l tests/plugin.lua
 python3 tests/corpus_check.py
 nvim --headless -u NONE -l tests/theme.lua
@@ -88,6 +89,39 @@ source bounds and repeatability without requiring unique anchors. The final
 harness still runs versioned fixtures alone when `tests/corpus-local/` is
 absent.
 
+### Source attribution recovery
+
+A known cmark column mismatch on an indented paragraph with inline emphasis is
+corrected from the physical source line. For a different, narrow non-code text
+mismatch, rendering keeps the original text and uses a coarse line-only anchor;
+source navigation in that block is therefore approximate. A deduplicated warning
+is published as an ordinary Neovim diagnostic only when that revision lays out
+successfully. A brief `vim.notify` warning names its first approximate source line
+in both modes; identical warnings are not repeated by redraws, details toggles,
+resizes or source edits. A successful warning-free layout clears the remembered
+signature, so a later recurrence is reported again. In split
+mode the source diagnostic remains available through Neovim's normal diagnostic UI,
+for example `:lua vim.diagnostic.open_float()` on the affected source line. Reader
+mode uses the visible notification because its source window is replaced. Correction
+or preview close clears mdview-owned diagnostics without clearing other namespaces.
+Structural failures and other unmatched attribution cases remain fatal; this is
+not general Notion/import compatibility or a guarantee of perfect text compatibility.
+
+The regression above is headless evidence. The user subsequently reported the
+manual checks fully passed in their Kitty configuration; supplied split screenshots
+show the complete preview with a line-4 warning, then no warning after a source
+edit. This is scoped user acceptance, not general Notion compatibility or exact
+navigation proof. To inspect the recovery fixture, run from the repository root:
+
+```bash
+bash scripts/manual-details split "$PWD/tests/fixtures/attribution-recovery.md"
+```
+
+The split launcher keeps source focus beside the preview; its warning appears as a
+notification and remains available through `:lua vim.diagnostic.open_float()` on
+line 4. Reader mode uses the same notification. Quit with `:qall!`. This probe does
+not establish exact navigation alignment or broader Markdown compatibility.
+
 The optional real-Merman check additionally needs the explicitly built evaluation
 binary; it does not download/build Merman automatically:
 
@@ -95,6 +129,13 @@ binary; it does not download/build Merman automatically:
 nvim --headless -u NONE -l tests/mermaid.lua
 ```
 
+- `attribution.lua` checks the known indented-paragraph inline-column correction,
+  plain/marked pixel parity, and a narrow remaining text mismatch that preserves
+  rendered text with a coarse line-only anchor. It verifies that a line-positioned
+  notification and source diagnostic are published only for successful current
+  warnings, redraws and TOGGLE do not repeat it, correction/close clear owned
+  warnings without disturbing another namespace, and structural HTML failure
+  remains fatal.
 - `smoke.sh` checks CLI orchestration with a **fake cmark-gfm**, not native pixels.
 - `plugin.lua` exercises the native worker/controller with mocked image display
   and cell sizes: plain/attributed PNG parity, tables/lists/entities/code, Markdown

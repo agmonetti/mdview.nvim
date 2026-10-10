@@ -278,6 +278,14 @@ See [Mermaid configuration](docs/configuration.md#mermaid) and the
 - Plugin raster frames are viewport-bounded, but whole-document layout memory and
   edit/width-change cost grow with input size. Intermediate image allocations are
   not generally bounded by the viewport.
+- Source attribution is not perfect. A known indented-paragraph/inline-emphasis
+  column mismatch is corrected; a narrow remaining text mismatch keeps the text
+  visible but uses approximate source-line navigation and reports a nonblocking
+  Neovim warning after a successful preview. A brief `vim.notify` message names the
+  approximate source line in either mode; split mode also retains its source
+  diagnostic for Neovim's normal diagnostic UI (for example,
+  `:lua vim.diagnostic.open_float()`). Structural failures remain fatal. This is not
+  full Notion/import or text-compatibility support.
 - Exact source alignment with all conceal, virtual text and wrapped-row combinations
   is not guaranteed. Cursor-follow diagrams too tall for the pane show their start.
 - Only one session is supported. image.nvim and ImageMagick are current plugin
