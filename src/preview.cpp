@@ -19,7 +19,8 @@
 #include "octicons.hpp"
 using Clock = std::chrono::steady_clock;
 struct Position { int line, column; };
-struct Label { std::string text; std::vector<Position> positions; };
+struct Label { std::string text; std::vector<Position> positions; int coarse_line = 0; };
+struct AttributionWarning { int first, last; std::string message; };
 struct Fragment { int line, column, end; double y; double block_bottom = 0; double bottom = 0; };
 struct Detail { int start, end = 0, header = 0; bool open = true; int parent = -1; litehtml::position box; bool visible = false, title = false; };
 static std::vector<std::pair<Position, Position>> html_comments;
@@ -100,6 +101,7 @@ class Markdown {
     std::vector<std::string> lines;
     std::vector<Label> labels;
     std::vector<Detail> details;
+    std::vector<AttributionWarning> attribution_warnings;
     MermaidRenderer* mermaid = nullptr;
     // Decode entities with the same parser that supplied the authoritative literal.
     static std::string entity(const std::string& value) {
@@ -138,19 +140,25 @@ class Markdown {
         for (int n = start; n <= end && n <= static_cast<int>(lines.size()); ++n) {
             const auto& line = lines[n-1];
             size_t begin = n == start ? static_cast<size_t>(std::max(0, cmark_node_get_start_column(node)-1)) : 0;
-            // cmark can count an implicit container prefix on lazy continuations,
-            // or strip leading indentation from a paragraph continuation while
-            // reporting an end column relative to the stripped text. Remap only
-            // when the literal is the complete non-whitespace physical line.
-            if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT && !text.empty()) {
+            size_t stop = n == end ? static_cast<size_t>(std::max(0, cmark_node_get_end_column(node))) : line.size();
+            if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT) {
+                auto paragraph = cmark_node_parent(node);
+                while (paragraph && cmark_node_get_type(paragraph) != CMARK_NODE_PARAGRAPH)
+                    paragraph = cmark_node_parent(paragraph);
                 const auto first = line.find_first_not_of(" \t");
-                if (first != std::string::npos && first != begin
-                    && line.compare(first, text.size(), text) == 0
-                    && line.find_first_not_of(" \t\r", first + text.size()) == std::string::npos) {
-                    begin = first;
+                // cmark reports continuation columns after stripping physical indentation.
+                if (paragraph && cmark_node_get_start_line(paragraph) < start && first != std::string::npos) {
+                    const auto container = static_cast<size_t>(std::max(0, cmark_node_get_start_column(paragraph)-1));
+                    const auto indent = first > container ? first - container : 0;
+                    begin += indent;
+                    stop += indent;
                 }
+                if (!text.empty() && first != std::string::npos && first != begin
+                    && line.compare(first, text.size(), text) == 0
+                    && line.find_first_not_of(" \t\r", first + text.size()) == std::string::npos)
+                    begin = first;
             }
-            size_t stop = n == end ? std::min(line.size(), static_cast<size_t>(std::max(0, cmark_node_get_end_column(node)))) : line.size();
+            stop = std::min(line.size(), stop);
             if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT
                 && begin + text.size() > stop && line.compare(begin, text.size(), text) == 0
                 && line.find_first_not_of(" \t\r", begin + text.size()) == std::string::npos)
@@ -180,7 +188,18 @@ class Markdown {
         size_t cursor = 0;
         for (unsigned char c : text) {
             auto found = decoded.find(static_cast<char>(c), cursor);
-            if (found == std::string::npos) throw std::runtime_error("Cannot attribute source text at line " + std::to_string(start));
+            if (found == std::string::npos) {
+                if (!code && cmark_node_get_type(node) == CMARK_NODE_TEXT
+                    && start >= 1 && end >= start && end <= static_cast<int>(lines.size())) {
+                    static const std::string message = "Could not match parsed text to original source; navigation for this block is approximate. Edit this block to retry.";
+                    if (attribution_warnings.size() < 64 && std::none_of(attribution_warnings.begin(), attribution_warnings.end(),
+                        [&](const auto& warning) { return warning.first == start && warning.last == end && warning.message == message; }))
+                        attribution_warnings.push_back({start, end, message});
+                    result.coarse_line = start;
+                    return result;
+                }
+                throw std::runtime_error("Cannot attribute source text at line " + std::to_string(start));
+            }
             result.positions.push_back(mapping[found]); cursor = found+1;
         }
         return result;
@@ -193,7 +212,7 @@ class Markdown {
         auto last = value.text.find_last_not_of(" \t\r\n") + 1;
         auto prefix = escape(value.text.substr(0, first)), suffix = escape(value.text.substr(last));
         value.text = value.text.substr(first, last-first);
-        value.positions = {value.positions.begin()+first, value.positions.begin()+last};
+        if (!value.coarse_line) value.positions = {value.positions.begin()+first, value.positions.begin()+last};
         int id = static_cast<int>(labels.size());
         auto text = escape(value.text);
         labels.push_back(std::move(value));
@@ -419,8 +438,9 @@ class Markdown {
     }
 public:
     std::vector<Detail>& get_details() { return details; }
+    const std::vector<AttributionWarning>& get_attribution_warnings() const { return attribution_warnings; }
     std::string convert(const std::string& source, bool marked = true, MermaidRenderer* renderer = nullptr, bool alerts = false, bool html_enabled = true, int viewport_width = 4096) {
-        lines.clear(); labels.clear(); details.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
+        lines.clear(); labels.clear(); details.clear(); attribution_warnings.clear(); html_comments.clear(); html_root_label = -1; mermaid = renderer;
         std::istringstream stream(source);
         for (std::string line; std::getline(stream, line);) lines.push_back(line);
         cmark_gfm_core_extensions_ensure_registered();
@@ -512,15 +532,23 @@ public:
             if (found == std::string::npos) throw std::runtime_error("Render leaf does not match source literal");
             offsets[id] = found+text.size();
             if (text.find_first_not_of(" \t\r\n") != std::string::npos && !text.empty()) {
-                auto first = value.positions.at(found), last = value.positions.at(found+text.size()-1);
                 const auto placement = node->get_placement();
-                fragments.push_back({first.line, first.column, last.column, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+                if (value.coarse_line) {
+                    fragments.push_back({value.coarse_line, 0, 0, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+                } else {
+                    auto first = value.positions.at(found), last = value.positions.at(found+text.size()-1);
+                    fragments.push_back({first.line, first.column, last.column, placement.y, 0, static_cast<double>(placement.y + placement.height)});
+                }
             }
         }
         for (const auto& child : node->children()) collect(child, id, offsets, fragments, image_line);
     }
 };
 
+static void emit_warnings(int revision, const std::vector<AttributionWarning>& warnings) {
+    for (const auto& warning : warnings)
+        std::cout << "WARN " << revision << ' ' << warning.first << ' ' << warning.last << ' ' << hex(warning.message) << '\n';
+}
 static std::string document_html(const std::string& body, const std::string& css) {
     const auto metadata = html_root_label < 0 ? std::string() : " data-mdview=\"" + std::to_string(html_root_label) + "\"";
     return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" + css + "</style></head><body><main class=\"markdown-body\"" + metadata + ">" + body + "</main></body></html>";
@@ -647,6 +675,7 @@ int main(int argc, char** argv) {
                 markdown.collect(doc->root_render(), -1, offsets, fragments);
                 revision = rev; width = w;
                 emit_geometry(fragments, markdown.get_details());
+                emit_warnings(revision, markdown.get_attribution_warnings());
                 std::cout << "READY " << revision << ' ' << width << ' ' << doc->height() << ' ' << elapsed(t) << '\n';
             } else if (op == "TOGGLE") {
                 int rev = 0, id = -1, open = -1;
@@ -668,6 +697,7 @@ int main(int argc, char** argv) {
                 fragments = std::move(next_fragments);
                 revision = rev;
                 emit_geometry(fragments, markdown.get_details());
+                emit_warnings(revision, markdown.get_attribution_warnings());
                 std::cout << "READY " << revision << ' ' << width << ' ' << doc->height() << ' ' << elapsed(t) << '\n';
             } else if (op == "DRAW") {
                 int rev=0, seq=0, line=0, col=0, botline=0, height=0; std::string output;
