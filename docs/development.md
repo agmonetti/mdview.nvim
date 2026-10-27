@@ -104,6 +104,13 @@ mode the source diagnostic remains available through Neovim's normal diagnostic 
 for example `:lua vim.diagnostic.open_float()` on the affected source line. Reader
 mode uses the visible notification because its source window is replaced. Correction
 or preview close clears mdview-owned diagnostics without clearing other namespaces.
+Cross-line inline code spans (including code in list/quote continuations and
+setext headings) now project cmark's synthetic inline coordinates onto physical
+source bytes for the span and following text. The projector runs only on
+multiline paragraph/heading subjects containing a verified cross-line code span;
+otherwise existing attribution is used. Projected text that cannot be decoded
+exactly keeps its rendering with a coarse warning, not invented byte anchors. Unsupported
+raw HTML remains rejected with `html=false`; this is not a general parser fix.
 Structural failures and other unmatched attribution cases remain fatal; this is
 not general Notion/import compatibility or a guarantee of perfect text compatibility.
 
@@ -136,6 +143,13 @@ nvim --headless -u NONE -l tests/mermaid.lua
   warnings, redraws and TOGGLE do not repeat it, correction/close clear owned
   warnings without disturbing another namespace, and structural HTML failure
   remains fatal.
+- `issue5.py` checks native LOAD/DRAW physical byte anchors for cross-line code,
+  following text, local images/autolinks, tabs/CRLF, hard breaks, repeated
+  literals, mixed inline HTML, setext headings and `html=false`, with
+  plain/marked/worker pixel parity at 320/700 px. A generated autolink without
+  reliable sourcepos and a separate ordinary hard-break case require coarse
+  warnings rather than falsely precise continuation anchors. Run `python3 tests/issue5.py` after build;
+  it does not test real Kitty presentation.
 - `smoke.sh` checks CLI orchestration with a **fake cmark-gfm**, not native pixels.
 - `plugin.lua` exercises the native worker/controller with mocked image display
   and cell sizes: plain/attributed PNG parity, tables/lists/entities/code, Markdown

@@ -113,6 +113,15 @@ class Markdown {
         cmark_node_free(node);
         return out;
     }
+    Label coarse_text(cmark_node* node, const std::string& text, int physical_line = 0) {
+        const int first = physical_line ? physical_line : cmark_node_get_start_line(node);
+        const int last = physical_line ? physical_line : cmark_node_get_end_line(node);
+        static const std::string message = "Could not match parsed text to original source; navigation for this block is approximate. Edit this block to retry.";
+        if (attribution_warnings.size() < 64 && std::none_of(attribution_warnings.begin(), attribution_warnings.end(),
+            [&](const auto& warning) { return warning.first == first && warning.last == last && warning.message == message; }))
+            attribution_warnings.push_back({first, last, message});
+        return {text, {}, first};
+    }
     Label original_label(cmark_node* node, const std::string& text, bool code = false) {
         Label result{text, {}};
         if (text.empty()) return result;
@@ -160,7 +169,7 @@ class Markdown {
             }
             stop = std::min(line.size(), stop);
             if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT
-                && begin + text.size() > stop && line.compare(begin, text.size(), text) == 0
+                && begin <= line.size() && begin + text.size() > stop && line.compare(begin, text.size(), text) == 0
                 && line.find_first_not_of(" \t\r", begin + text.size()) == std::string::npos)
                 stop = begin + text.size();
             for (size_t col = begin; col < stop; ++col) { raw += line[col]; positions.push_back({n, static_cast<int>(col)}); }
@@ -191,12 +200,7 @@ class Markdown {
             if (found == std::string::npos) {
                 if (!code && cmark_node_get_type(node) == CMARK_NODE_TEXT
                     && start >= 1 && end >= start && end <= static_cast<int>(lines.size())) {
-                    static const std::string message = "Could not match parsed text to original source; navigation for this block is approximate. Edit this block to retry.";
-                    if (attribution_warnings.size() < 64 && std::none_of(attribution_warnings.begin(), attribution_warnings.end(),
-                        [&](const auto& warning) { return warning.first == start && warning.last == end && warning.message == message; }))
-                        attribution_warnings.push_back({start, end, message});
-                    result.coarse_line = start;
-                    return result;
+                    return coarse_text(node, text);
                 }
                 throw std::runtime_error("Cannot attribute source text at line " + std::to_string(start));
             }
@@ -357,7 +361,9 @@ class Markdown {
                 std::string html(rendered.get());
                 auto tag = html.find("<img ");
                 if (tag == std::string::npos) throw std::runtime_error("Cannot label image");
-                html.insert(tag+5, "data-mdview-image=\"" + std::to_string(cmark_node_get_start_line(node)) + "\" ");
+                auto projected = html_bounds.find(node);
+                const int image_line = projected == html_bounds.end() ? cmark_node_get_start_line(node) : projected->second.first.line;
+                html.insert(tag+5, "data-mdview-image=\"" + std::to_string(image_line) + "\" ");
                 auto replacement = cmark_node_new(CMARK_NODE_HTML_INLINE);
                 cmark_node_set_literal(replacement, html.c_str());
                 cmark_node_replace(node, replacement);
@@ -367,7 +373,7 @@ class Markdown {
                 std::string html;
                 if (type == CMARK_NODE_CODE) {
                     auto value = label(node, text, true);
-                    if (value.positions.empty()) html = "<code>" + escape(text) + "</code>";
+                    if (value.positions.empty() && !value.coarse_line) html = "<code>" + escape(text) + "</code>";
                     else {
                         const auto id = labels.size();
                         labels.push_back(std::move(value));
@@ -376,7 +382,7 @@ class Markdown {
                 } else if (html_bare_text.count(node)) html = escape(text);
                 else {
                     auto value = label(node, text);
-                    html = value.positions.empty() ? escape(text) : span(std::move(value));
+                    html = value.positions.empty() && !value.coarse_line ? escape(text) : span(std::move(value));
                 }
                 auto replacement = cmark_node_new(CMARK_NODE_HTML_INLINE);
                 cmark_node_set_literal(replacement, html.c_str());
@@ -478,6 +484,7 @@ public:
                 render_alerts(root, found, marked);
             }
             if (html_enabled) sanitize_html(root, marked, viewport_width);
+            else if (marked) html_prepare_positions(root);
             if (marked) instrument(root);
             std::unique_ptr<char, decltype(&std::free)> rendered(cmark_render_html(root, CMARK_OPT_UNSAFE, cmark_parser_get_syntax_extensions(parser)), &std::free);
             std::string html = html_annotate(rendered.get());

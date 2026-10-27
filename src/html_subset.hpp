@@ -148,11 +148,155 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
 }
 std::map<cmark_node*, std::pair<Position, Position>> html_bounds;
 std::map<cmark_node*, std::vector<Position>> html_raw_positions;
+std::map<cmark_node*, Label> code_projection_labels;
+// cmark keeps an inline code span's physical newline inside one logical line,
+// shifting positions of all following inlines. Project the paragraph subject
+// (including stripped container prefixes) once, then use physical byte positions.
+bool prepare_code_subject(cmark_node* block) {
+    if (cmark_node_get_type(block) != CMARK_NODE_PARAGRAPH
+        && cmark_node_get_type(block) != CMARK_NODE_HEADING) return false;
+    std::vector<cmark_node*> nodes;
+    bool has_code = false;
+    auto walk = [&](auto&& self, cmark_node* node) -> void {
+        for (auto child = cmark_node_first_child(node); child; child = cmark_node_next(child)) {
+            nodes.push_back(child);
+            has_code |= cmark_node_get_type(child) == CMARK_NODE_CODE;
+            self(self, child);
+        }
+    };
+    walk(walk, block);
+    if (!has_code) return false;
+    const char* content = cmark_node_get_string_content(block);
+    if (!content) return false;
+    const std::string subject(content);
+    if (subject.find('\n') == std::string::npos
+        || (cmark_node_get_type(block) == CMARK_NODE_HEADING && subject.find('\n')+1 == subject.size())) return false;
+    std::vector<Position> physical;
+    std::map<cmark_node*, Label> projected_labels;
+    std::map<cmark_node*, std::vector<Position>> projected_html;
+    std::map<cmark_node*, std::pair<Position, Position>> projected_bounds;
+    int line = cmark_node_get_start_line(block);
+    for (size_t begin = 0; begin < subject.size(); ++line) {
+        const auto next = subject.find('\n', begin);
+        const bool newline = next != std::string::npos;
+        const size_t end = newline ? next : subject.size();
+        const std::string segment = subject.substr(begin, end-begin);
+        if (line < 1 || line > static_cast<int>(lines.size())) return false;
+        const auto& source = lines[line-1];
+        size_t stop = source.size();
+        if (stop && source[stop-1] == '\r') --stop;
+        if (segment.size() <= stop && source.compare(stop-segment.size(), segment.size(), segment) == 0) {
+            const size_t column = stop-segment.size();
+            for (size_t i=0; i<segment.size(); ++i) physical.push_back({line, static_cast<int>(column+i)});
+        } else {
+            // A partially consumed tab contributes virtual spaces owned by its source byte.
+            std::string expanded;
+            std::vector<int> columns;
+            for (size_t col=0, visual=0; col<stop; ++col) {
+                const size_t width = source[col]=='\t' ? 4-visual%4 : 1;
+                expanded.append(width, source[col]=='\t' ? ' ' : source[col]);
+                columns.insert(columns.end(), width, static_cast<int>(col));
+                visual += width;
+            }
+            if (segment.size() > expanded.size() || expanded.compare(expanded.size()-segment.size(), segment.size(), segment) != 0)
+                return false; // Unchanged attribution path retains its diagnostic/coarse fallback.
+            const size_t offset = expanded.size()-segment.size();
+            for (size_t i=0; i<segment.size(); ++i) physical.push_back({line, columns[offset+i]});
+        }
+        if (newline) physical.push_back({line, static_cast<int>(stop)});
+        begin = end + (newline ? 1 : 0);
+    }
+    std::map<std::pair<int,int>, cmark_node*> events;
+    for (auto node : nodes) if (cmark_node_get_type(node) == CMARK_NODE_CODE || cmark_node_get_type(node) == CMARK_NODE_HTML_INLINE)
+        events[{cmark_node_get_start_line(node), cmark_node_get_start_column(node)-1}] = node;
+    std::map<std::pair<int,int>, size_t> indices;
+    int logical_line = cmark_node_get_start_line(block);
+    const int baseline = cmark_node_get_start_column(block)-1;
+    int column = baseline;
+    size_t remaining = 0;
+    bool multiline_code = false;
+    for (size_t i=0; i<subject.size(); ++i) {
+        const auto event = events.find({logical_line, column});
+        if (!remaining && event != events.end()) {
+            auto node = event->second;
+            if (cmark_node_get_type(node) == CMARK_NODE_HTML_INLINE) {
+                const std::string raw = cmark_node_get_literal(node);
+                if (raw.size() > subject.size()-i || subject.compare(i, raw.size(), raw) != 0)
+                    return false;
+                projected_html[node] = {physical.begin()+i, physical.begin()+i+raw.size()};
+                remaining = raw.size();
+            } else {
+                remaining = cmark_node_get_end_column(node)-cmark_node_get_start_column(node)+1;
+                if (remaining > subject.size()-i) return false;
+                size_t ticks = 0;
+                for (size_t k=i; k && subject[k-1]=='`'; --k) ++ticks;
+                if (!ticks || ticks > subject.size()-i-remaining || subject.compare(i+remaining, ticks, std::string(ticks, '`')) != 0)
+                    return false;
+                std::string normalized = subject.substr(i, remaining);
+                multiline_code |= normalized.find('\n') != std::string::npos;
+                std::replace(normalized.begin(), normalized.end(), '\n', ' ');
+                size_t first=0, last=normalized.size();
+                if (last >= 2 && normalized.front()==' ' && normalized.back()==' '
+                    && normalized.find_first_not_of(' ') != std::string::npos) { ++first; --last; }
+                if (normalized.substr(first, last-first) != cmark_node_get_literal(node)) return false;
+                projected_labels[node] = {normalized.substr(first, last-first),
+                    {physical.begin()+i+first, physical.begin()+i+last}};
+            }
+        }
+        indices[{logical_line, column}] = i;
+        if (remaining) { --remaining; ++column; }
+        else if (subject[i]=='\n') {
+            size_t slashes = 0;
+            while (slashes < i && subject[i-slashes-1]=='\\') ++slashes;
+            if (slashes % 2) ++column; // cmark keeps an escaped hard break on the preceding logical line.
+            else { ++logical_line; column = baseline; }
+        } else ++column;
+    }
+    if (!multiline_code) return false;
+    for (auto node : nodes) {
+        const auto first = indices.find({cmark_node_get_start_line(node), cmark_node_get_start_column(node)-1});
+        const auto last = indices.find({cmark_node_get_end_line(node), cmark_node_get_end_column(node)-1});
+        if (first == indices.end() || last == indices.end() || first->second > last->second) {
+            const auto type = cmark_node_get_type(node);
+            if (type == CMARK_NODE_TEXT || type == CMARK_NODE_CODE)
+                projected_labels[node] = coarse_text(node, cmark_node_get_literal(node), physical.front().line);
+            else if (type == CMARK_NODE_IMAGE || (type == CMARK_NODE_HTML_INLINE && !projected_html.count(node)))
+                throw std::runtime_error("Cannot project inline source position at line " + std::to_string(physical.front().line));
+            continue;
+        }
+        projected_bounds[node] = {physical[first->second], physical[last->second]};
+        if (cmark_node_get_type(node) != CMARK_NODE_TEXT) continue;
+        Label value;
+        for (size_t i=first->second; i<=last->second;) {
+            size_t count=1;
+            std::string decoded(1, subject[i]);
+            if (subject[i]=='\\' && i<last->second && std::ispunct(static_cast<unsigned char>(subject[i+1]))) {
+                decoded = subject.substr(i+1, 1); count=2;
+            } else if (subject[i]=='&') {
+                const auto stop = subject.find(';', i);
+                if (stop != std::string::npos && stop<=last->second && stop-i<40) {
+                    const auto candidate = subject.substr(i, stop-i+1);
+                    const auto converted = entity(candidate);
+                    if (!converted.empty() && converted != candidate) { decoded=converted; count=candidate.size(); }
+                }
+            }
+            value.text += decoded;
+            value.positions.insert(value.positions.end(), decoded.size(), physical[i]);
+            i += count;
+        }
+        if (value.text == cmark_node_get_literal(node)) projected_labels[node] = std::move(value);
+        else projected_labels[node] = coarse_text(node, cmark_node_get_literal(node), physical[first->second].line);
+    }
+    code_projection_labels.insert(projected_labels.begin(), projected_labels.end());
+    html_raw_positions.insert(projected_html.begin(), projected_html.end());
+    html_bounds.insert(projected_bounds.begin(), projected_bounds.end());
+    return true;
+}
 // A cmark inline HTML token consumes literal newlines without updating the
 // inline subject's line counter. Project that subject's coordinates onto the
 // original bytes; do not locate later text by its value.
 void html_prepare_positions(cmark_node* root) {
-    html_bounds.clear(); html_raw_positions.clear();
+    html_bounds.clear(); html_raw_positions.clear(); code_projection_labels.clear();
     auto blocks = [&](auto&& self, cmark_node* parent) -> void {
         for (auto block = cmark_node_first_child(parent); block; block = cmark_node_next(block)) {
             const auto type = cmark_node_get_type(block);
@@ -167,6 +311,7 @@ void html_prepare_positions(cmark_node* root) {
                 }
             };
             leaves(leaves, block);
+            if (prepare_code_subject(block)) continue;
             if (raws.empty()) continue;
             std::map<std::pair<int,int>, Position> projection;
             const int first = cmark_node_get_start_line(block), last = cmark_node_get_end_line(block);
@@ -232,6 +377,8 @@ void html_prepare_positions(cmark_node* root) {
     blocks(blocks, root);
 }
 Label label(cmark_node* node, const std::string& text, bool code = false) {
+    const auto direct = code_projection_labels.find(node);
+    if (direct != code_projection_labels.end()) return direct->second;
     const auto bounds = html_bounds.find(node);
     if (bounds == html_bounds.end()) return original_label(node, text, code);
     std::string raw;
@@ -417,6 +564,7 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                 auto value = label(node, text);
                 for (size_t i = 0; i+1 < text.size(); ++i) {
                     if (text[i] != '<' || !(html_letter(text[i+1]) || text[i+1] == '/' || text[i+1] == '!')) continue;
+                    if (i >= value.positions.size()) continue; // Coarse text has no reliable byte positions.
                     const auto position = value.positions[i];
                     if (position.line < 1 || position.line > static_cast<int>(lines.size())) continue;
                     const auto& source = lines[position.line-1];

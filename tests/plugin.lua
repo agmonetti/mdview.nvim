@@ -254,6 +254,22 @@ local function check()
     api.nvim_exec_autocmds("WinResized", {})
   end
   wait(function() return not s.busy and not s.dirty and s.frame.revision==s.revision and s.frame.width==410 end, "burst convergence")
+  -- cmark reports a cross-line code span and its following text on one synthetic line.
+  local code_lines={"# Before", "", "1. Item with `two", "   lines of code` tail.", "", "# Following"}
+  api.nvim_buf_set_lines(s.source_buf, 0, -1, false, code_lines)
+  wait(function() return not s.busy and not s.error and s.frame.revision==s.revision
+    and vim.iter(s.fragments):any(function(f) return f.line==4 and f.column==18 end) end,
+    "unsaved multiline code and following text")
+  assert(vim.fn.readfile(path)[1]=="# Native fixture", "cross-line code wrote the source file")
+  api.nvim_win_call(source_win, function() vim.cmd("normal! 4Gzt") end)
+  api.nvim_exec_autocmds("WinScrolled", {})
+  wait(function() return not s.busy and s.frame.line==4 end, "code continuation scroll")
+  mdview.setup({html=false})
+  api.nvim_buf_set_lines(s.source_buf, 3, 4, false, {"   lines of code` changed tail."})
+  wait(function() return not s.busy and not s.error and s.frame.revision==s.revision
+    and vim.iter(s.fragments):any(function(f) return f.line==4 and f.column==18 end) end,
+    "html=false cross-line code edit")
+  mdview.setup({html=true})
   -- Beyond Cairo's full-image height limit; draw only a bounded lower viewport.
   local long={}
   for n=1,180 do
