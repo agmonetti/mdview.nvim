@@ -205,7 +205,6 @@ function M.close()
   else vim.fn.delete(s.directory, "rf") end
   if s.mode == "replace" then
     if api.nvim_win_is_valid(s.source_win) and api.nvim_buf_is_valid(s.source_buf) then
-      pcall(function() vim.wo[s.source_win].winfixbuf = false end)
       local target_line = 1
       if s.fragments and s.current_y then
         for _, f in ipairs(s.fragments) do
@@ -287,7 +286,7 @@ function M.open(mode)
   vim.bo[preview_buf].filetype = "mdview"
   vim.bo[preview_buf].modifiable = false
   local win_opts = { number=false, relativenumber=false, signcolumn="no", foldcolumn="0", wrap=false, cursorline=false, spell=false }
-  if vim.fn.exists("+winfixbuf") == 1 then win_opts.winfixbuf = true end
+  -- winfixbuf makes LazyVim's resize-time `tabdo` create a duplicate window.
   for key, value in pairs(win_opts) do pcall(function() vim.wo[preview_win][key] = value end) end
   vim.wo[preview_win].fillchars = "eob: "
 

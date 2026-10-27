@@ -309,6 +309,10 @@ local function check()
   assert(reopened.mode == "replace", "default mode is not replace")
   assert(reopened.frame.y == 0, "reader opening at line one cropped the first text row")
   assert(image_options.render_offset_top == -1, "image placement leaves a blank terminal row")
+  -- LazyVim runs this on VimResized; winfixbuf would create a duplicate window.
+  local reader_windows = #api.nvim_tabpage_list_wins(0)
+  vim.cmd("tabdo wincmd =")
+  assert(#api.nvim_tabpage_list_wins(0) == reader_windows, "resize created a duplicate reader window")
   -- Continuous input must display intermediate frames, not freeze until input stops.
   local before_render, before_clear = rendered, cleared
   local events = 0
@@ -335,6 +339,9 @@ local function check()
   wait(function() local new=mdview.status(); return new and new.frame and not new.busy end, "explicit split open")
   local split_s = mdview.status()
   assert(split_s.mode == "split", "explicit mode is not split")
+  local split_windows = #api.nvim_tabpage_list_wins(0)
+  vim.cmd("tabdo wincmd =")
+  assert(#api.nvim_tabpage_list_wins(0) == split_windows, "resize created a duplicate split window")
   vim.cmd("MdView")
   assert(not mdview.status())
 
