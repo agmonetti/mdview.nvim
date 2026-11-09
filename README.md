@@ -232,10 +232,10 @@ Fold state is session-local and does not modify the source file. Unchanged block
 ## Mermaid diagrams (optional)
 
 Mermaid fences remain literal code blocks unless explicitly enabled. The optional
-Merman CLI integration renders unsaved changes automatically. The evaluated build
-supports **ER diagrams**, not complete Mermaid compatibility; unsupported diagram
-families (such as `flowchart LR`) remain literal code blocks while the rest of the
-document renders. Relationship labels in rendered ER diagrams can overlap.
+Merman CLI integration renders unsaved changes automatically. The evaluated build supports **ER diagrams and flowcharts (`graph` / `flowchart`)**,
+not complete Mermaid compatibility; unsupported diagram families (such as
+`sequenceDiagram`) remain literal code blocks while the rest of the document renders.
+Relationship labels in rendered ER diagrams can overlap.
 
 1. From the checkout, explicitly build the pinned optional renderer:
 

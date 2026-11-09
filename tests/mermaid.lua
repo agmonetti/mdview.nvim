@@ -230,15 +230,15 @@ local function check()
   wait(function() local s=mdview.status(); return s and settled(s) end,"bundled Mermaid opt-in")
   local bundled=mdview.status()
   matches_reference(bundled,reference,1)
-  -- The pinned renderer does not include flowcharts: only that fence stays literal.
+  -- The pinned renderer does not include sequence diagrams: only that fence stays literal.
   -- Compare the scrolled viewport with an independent Markdown/image oracle, not
   -- just a successful LOAD (which could have silently omitted the unsupported block).
   local mixed_png=save(directory .. "/mixed-er.png",contents(diagram(bundled)))
   local mixed={"# Automatic Mermaid","","```mermaid"}
   vim.list_extend(mixed,reference)
-  vim.list_extend(mixed,{"```","","```mermaid","flowchart LR","  A[Start] --> B[Done]","```","","## After the flowchart",
+  vim.list_extend(mixed,{"```","","```mermaid","sequenceDiagram","  Alice->>Bob: Hello","```","","## After the unsupported diagram",
     "The document continues after the unsupported diagram.",""})
-  local flow_line=#reference+7
+  local unsupported_line=#reference+7
   local after_line=#reference+11
   for n=1,60 do mixed[#mixed+1]="Remaining paragraph " .. n end
   local oracle={"# Automatic Mermaid","","![Mermaid diagram](" .. mixed_png .. ")"}
@@ -247,27 +247,27 @@ local function check()
   vim.fn.writefile(oracle,oracle_path)
   local revision=bundled.revision
   api.nvim_buf_set_lines(bundled.source_buf,0,-1,false,mixed)
-  wait(function() return bundled.revision>revision and settled(bundled) end,"mixed ER and unsupported flowchart")
+  wait(function() return bundled.revision>revision and settled(bundled) end,"mixed ER and unsupported diagram")
   assert(#vim.fn.glob(bundled.directory .. "/diagrams/*.png",false,true)==1,
-    "unsupported flowchart produced an image or discarded the valid ER")
-  local flow_y,after_y,flow_text=false,false,false
+    "unsupported diagram produced an image or discarded the valid ER")
+  local unsupported_y,after_y,unsupported_text=false,false,false
   for _,f in ipairs(bundled.fragments) do
-    if f.line==flow_line then
-      flow_y=f.y
-      if f.finish>f.column then flow_text=true end
+    if f.line==unsupported_line then
+      unsupported_y=f.y
+      if f.finish>f.column then unsupported_text=true end
     end
     if f.line==after_line then after_y=f.y end
   end
-  assert(flow_text and flow_y and after_y and after_y>flow_y,
-    "flowchart literal or following Markdown lost its source/layout")
-  bundled.scroll_to(math.floor(flow_y))
+  assert(unsupported_text and unsupported_y and after_y and after_y>unsupported_y,
+    "unsupported diagram literal or following Markdown lost its source/layout")
+  bundled.scroll_to(math.floor(unsupported_y))
   wait(function() return settled(bundled) and bundled.frame.y>0 end,"unsupported fence viewport")
-  assert(flow_y>=bundled.frame.y and flow_y<bundled.frame.y+bundled.frame.height
+  assert(unsupported_y>=bundled.frame.y and unsupported_y<bundled.frame.y+bundled.frame.height
     and after_y<bundled.frame.y+bundled.frame.height,
     "fallback fence and following heading were not visible together")
   native_frame(oracle_path,bundled,directory .. "/mixed-oracle.png")
   assert(pixels_equal(directory .. "/mixed-oracle.png",save(directory .. "/mixed-displayed.png",assert(displayed))),
-    "unsupported flowchart did not render as literal code alongside the ER and following Markdown")
+    "unsupported diagram did not render as literal code alongside the ER and following Markdown")
 
   local bad={"# Automatic Mermaid","","```mermaid","erDiagram",'users ||--o{ buyers : "incompleto',"```"}
   for n=#reference+5,#mixed do bad[#bad+1]=mixed[n] end

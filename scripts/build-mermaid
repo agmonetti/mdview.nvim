@@ -17,4 +17,4 @@ export CARGO_HOME="$work/cargo" CARGO_TARGET_DIR="$work/target"
 # Ignore upstream rust-toolchain.toml; use the already installed compiler.
 export RUSTUP_TOOLCHAIN=1.96.0
 cargo build --manifest-path "$work/source/Cargo.toml" --locked --release \
-  -p merman-cli --no-default-features --features diagram-er,svg,png -j 2
+  -p merman-cli --no-default-features --features diagram-er,diagram-flowchart,svg,png -j 2

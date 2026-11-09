@@ -291,8 +291,8 @@ source/float focus and close, preserving newer external guicursor changes.
 
 Follow the [optional build instructions](../README.md#mermaid-diagrams-optional)
 first. The evaluated pin is Merman `v0.8.0-alpha.7`, commit
-`580e39b69cc1b0ca35c4f8272683e622b2e9b8db`, built with ER, SVG and PNG features.
-Unsupported diagram families (including flowcharts) remain literal fenced code
+`580e39b69cc1b0ca35c4f8272683e622b2e9b8db`, built with ER, flowchart, SVG and PNG features.
+Unsupported diagram families (such as sequence diagrams) remain literal fenced code
 blocks without aborting the rest of the preview. Other diagram families require a
 compatible build; complete official Mermaid semantics/visual compatibility is not
 promised.
