@@ -5,8 +5,10 @@ struct HtmlToken {
     size_t begin = 0, end = 0;
     std::string name;
     std::string src, alt, image_error;
+    std::string href;
     uint32_t requested_width = 0, requested_height = 0;
     bool has_width = false, has_height = false;
+    bool width_percent = false, height_percent = false;
     bool has_src = false;
     bool center = false;
     uint32_t colspan = 1, rowspan = 1;
@@ -31,7 +33,7 @@ static bool html_allowed(const std::string& name) {
     return name == "br" || name == "img" || name == "kbd" || name == "sup" || name == "sub" || name == "span" || name == "p" || name == "div"
         || name == "table" || name == "thead" || name == "tbody" || name == "tfoot" || name == "tr"
         || name == "th" || name == "td" || name == "caption"
-        || name == "details" || name == "summary" || name == "b" || name == "strong" || name == "u" || html_heading(name);
+        || name == "details" || name == "summary" || name == "b" || name == "strong" || name == "u" || name == "a" || html_heading(name);
 }
 static std::string html_attribute(const std::string& value) {
     std::string out;
@@ -48,15 +50,24 @@ static std::string html_attribute(const std::string& value) {
     }
     return out;
 }
-static bool html_dimension(const std::string& value, uint32_t& result) {
-    size_t end = value.size();
+static bool html_dimension(const std::string& raw_val, uint32_t& result, bool* percent = nullptr) {
+    if (percent) *percent = false;
+    size_t start = 0, end = raw_val.size();
+    while (start < end && html_space(raw_val[start])) ++start;
+    while (end > start && html_space(raw_val[end - 1])) --end;
+    std::string value = raw_val.substr(start, end - start);
+    end = value.size();
     if (end >= 2 && value.compare(end-2, 2, "px") == 0) end -= 2;
+    else if (percent && end >= 1 && value.back() == '%') {
+        *percent = true;
+        end -= 1;
+    }
     if (!end) return false;
     uint32_t number = 0;
     for (size_t i = 0; i < end; ++i) {
         if (value[i] < '0' || value[i] > '9') return false;
         number = number * 10 + static_cast<unsigned>(value[i] - '0');
-        if (number > 4096) return false;
+        if (*percent ? (number > 100) : (number > 4096)) return false;
     }
     if (!number) return false;
     result = number;
@@ -95,7 +106,7 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
         if (i == attr) { token.valid = false; ++i; continue; }
         std::string attribute = raw.substr(attr, i-attr), value;
         for (char& c : attribute) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        if (token.name == "img" && !attributes.emplace(attribute, true).second) token.valid = false;
+        if ((token.name == "img" || token.name == "a") && !attributes.emplace(attribute, true).second) token.valid = false;
         bool has_value = false;
         bool space_after = false;
         while (i < raw.size() && html_space(raw[i])) { space_after = true; ++i; }
@@ -123,6 +134,23 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
         if (!token.closing && (token.name == "p" || html_heading(token.name))
             && attribute == "align" && has_value && html_attribute(value) == "center")
             token.center = true;
+        if (token.name == "a") {
+            if (attribute == "href") {
+                if (has_value) {
+                    std::string href = html_attribute(value);
+                    std::string lower = href;
+                    for (char& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    size_t s = 0;
+                    while (s < lower.size() && html_space(lower[s])) ++s;
+                    if (lower.compare(s, 11, "javascript:") == 0 || lower.compare(s, 5, "data:") == 0 || lower.compare(s, 9, "vbscript:") == 0)
+                        token.valid = false;
+                    else
+                        token.href = href;
+                }
+            } else if (attribute != "title" && attribute != "target" && attribute != "rel" && attribute != "id" && attribute != "name" && attribute != "class") {
+                token.valid = false;
+            }
+        }
         if (token.name == "img" && (attribute == "src" || attribute == "alt")) {
             if (!has_value) token.valid = false;
             if (attribute == "src") { token.src = html_attribute(value); token.has_src = has_value; }
@@ -130,9 +158,10 @@ static HtmlToken html_tag(const std::string& raw, size_t begin) {
         }
         if (token.name == "img" && (attribute == "width" || attribute == "height")) {
             uint32_t size = 0;
-            if (!has_value || !html_dimension(value, size)) token.valid = false;
-            if (attribute == "width") { token.has_width = true; token.requested_width = size; }
-            else { token.has_height = true; token.requested_height = size; }
+            bool is_percent = false;
+            if (!has_value || !html_dimension(value, size, &is_percent)) token.valid = false;
+            if (attribute == "width") { token.has_width = true; token.requested_width = size; token.width_percent = is_percent; }
+            else { token.has_height = true; token.requested_height = size; token.height_percent = is_percent; }
         }
         if (html_table_cell(token.name) && (attribute == "colspan" || attribute == "rowspan")) {
             uint32_t size = 0;
@@ -716,10 +745,16 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                         token.detail = stack.back().detail;
                         details[token.detail].header = raw.positions[token.begin].line;
                     }
-                } else if (token.name != "b" && !html_heading(token.name) && !stack.empty()
+                } else if (token.name != "b" && token.name != "a" && !html_heading(token.name) && !stack.empty()
                     && (stack.back().name == "summary" || stack.back().name == "b" || html_heading(stack.back().name))) {
                     if (token.name != "strong" || !html_heading(stack.back().name) || summary_heading())
                         fail(group, "unsupported tag inside summary or heading");
+                } else if (token.name == "a") {
+                    for (const auto& open : stack) if (open.name == "a")
+                        fail(group, "nested HTML link");
+                    if (!stack.empty() && (stack.back().name == "table" || html_table_section(stack.back().name)
+                        || stack.back().name == "tr"))
+                        fail(group, "link outside HTML table cell");
                 } else if (html_heading(token.name) && !stack.empty()
                     && stack.back().name != "summary" && stack.back().name != "div"
                     && (stack.back().name != "details" || !details[stack.back().detail].header)) {
@@ -730,7 +765,7 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                         fail(group, "invalid block nesting");
                 } else if (!stack.empty() && stack.back().name == "details" && !details[stack.back().detail].header)
                     fail(group, "summary must be the first details child");
-                if (token.name == "b" || html_heading(token.name)) token.detail = stack.empty() ? -1 : stack.back().detail;
+                if (token.name == "b" || html_heading(token.name) || token.name == "a") token.detail = stack.empty() ? -1 : stack.back().detail;
                 stack.push_back({token.name, group, token.detail});
             }
         }
@@ -748,7 +783,7 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
             std::string reason;
             auto* image = html_images::surface(token.src, &reason);
             if (!image) token.image_error = reason;
-            else if (token.has_width || token.has_height) {
+            else if ((token.has_width || token.has_height) && !token.width_percent && !token.height_percent) {
                 const uint64_t iw = cairo_image_surface_get_width(image), ih = cairo_image_surface_get_height(image);
                 // Keep the intrinsic decoded surface. Fit requested dimensions within
                 // a fixed vertical cap and the stock horizontal document padding.
@@ -852,8 +887,15 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                     continue;
                 }
                 html += "<img src=\"" + escape(html_images::register_html_source(token.src)) + "\" alt=\"" + escape(token.alt) + "\"";
-                if (token.has_width || token.has_height)
-                    html += " style=\"width:" + std::to_string(token.requested_width) + "px;height:auto\"";
+                if (token.has_width || token.has_height) {
+                    if (token.width_percent) {
+                        html += " style=\"width:" + std::to_string(token.requested_width) + "%;height:auto\"";
+                    } else if (token.height_percent) {
+                        html += " style=\"height:" + std::to_string(token.requested_height) + "%;width:auto\"";
+                    } else {
+                        html += " style=\"width:" + std::to_string(token.requested_width) + "px;height:auto\"";
+                    }
+                }
                 if (marked) {
                     const auto first = raw.positions[token.begin], last = raw.positions[token.end-1];
                     html += " data-mdview-image=\"" + std::to_string(first.line)
@@ -877,6 +919,9 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                 if (marked) owners.pop_back();
             } else {
                 html += "<" + token.name;
+                if (token.name == "a" && !token.href.empty()) {
+                    html += " href=\"" + escape(token.href) + "\"";
+                }
                 if (token.center) html += " style=\"text-align:center\"";
                 if (html_table_cell(token.name)) {
                     if (token.colspan != 1) html += " colspan=\"" + std::to_string(token.colspan) + "\"";
@@ -886,7 +931,7 @@ void sanitize_html(cmark_node* root, bool marked, int viewport_width) {
                     const int id = static_cast<int>(labels.size());
                     labels.push_back(Label{});
                     owners.push_back({id, token.name == "kbd" || token.name == "sup" || token.name == "sub"
-                        || token.name == "strong" || token.name == "u" || html_table_cell(token.name) || token.name == "caption"});
+                        || token.name == "strong" || token.name == "u" || token.name == "a" || html_table_cell(token.name) || token.name == "caption"});
                     html += " data-mdview=\"" + std::to_string(id) + "\"";
                 }
                 html += ">";
