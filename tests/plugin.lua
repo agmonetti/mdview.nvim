@@ -23,6 +23,8 @@ local command_completion = vim.fn.getcompletion("MdV", "cmdline")
 assert(command_completion[1] == "MdView", "toggle is not first in command completion")
 assert(vim.fn.exists(":MdViewOpen") == 2 and vim.fn.exists(":MdViewClose") == 2,
   "explicit open/close commands are missing")
+assert(vim.fn.maparg("<leader>md", "n", false, true).rhs == "<cmd>MdView<cr>", "default keymap missing")
+assert(not pcall(mdview.setup, {keymap=true}), "invalid keymap accepted")
 local function wait(predicate, description)
   assert(vim.wait(15000, predicate, 10), description .. ": " .. tostring(mdview.status() and mdview.status().error))
 end

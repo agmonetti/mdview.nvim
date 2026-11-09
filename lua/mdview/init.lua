@@ -1,7 +1,15 @@
 local M = {}
 local api = vim.api
 local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
-local options = { renderer = root .. "/build/mdview-preview", stylesheet = root .. "/styles/markdown.css", mode = "replace", raw = nil, html = true }
+local options = { renderer = root .. "/build/mdview-preview", stylesheet = root .. "/styles/markdown.css", mode = "replace", raw = nil, html = true, keymap = "<leader>md" }
+local function update_keymap(new_map, prev_map)
+  if prev_map and prev_map ~= false and prev_map ~= new_map then
+    pcall(vim.keymap.del, "n", prev_map)
+  end
+  if new_map and type(new_map) == "string" and new_map ~= "" then
+    vim.keymap.set("n", new_map, "<cmd>MdView<cr>", { silent = true, desc = "Toggle Markdown preview" })
+  end
+end
 -- ponytail: one preview session; add per-window sessions when simultaneous previews are needed.
 local session
 local function wants_zbelow(opts)
@@ -165,10 +173,16 @@ function M.setup(opts)
   assert(opts.mermaid == nil or type(opts.mermaid) == "boolean"
     or (type(opts.mermaid) == "table" and type(opts.mermaid.renderer) == "string" and opts.mermaid.renderer ~= ""),
     "mdview: mermaid must be true, false or {renderer='/path/to/merman-cli'}")
+  assert(opts.keymap == nil or type(opts.keymap) == "string" or opts.keymap == false,
+    "mdview: keymap must be a string or false")
+  local prev_keymap = options.keymap
   local preset = opts.preset == "fluid" and {raw=true, smooth=true, factor=0.6, clamp=84} or {}
   options = vim.tbl_extend("force", options, preset, opts)
   if options.mermaid == true then
     options.mermaid = {renderer = root .. "/build/merman-evaluation/target/release/merman-cli"}
+  end
+  if opts.keymap ~= nil or vim.g.mdview_default_keymaps ~= false then
+    update_keymap(options.keymap, prev_keymap)
   end
 end
 

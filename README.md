@@ -63,6 +63,9 @@ return {
     dir = "/absolute/path/to/mdview.nvim",
     name = "mdview.nvim",
     cmd = { "MdView", "MdViewOpen", "MdViewClose", "MdViewToggleDetail" },
+    keys = {
+      { "<leader>md", "<cmd>MdView<cr>", desc = "Toggle Markdown preview" },
+    },
     dependencies = { "3rd/image.nvim" },
     build = false, -- built explicitly above
     config = function()
@@ -82,7 +85,7 @@ Open a Markdown buffer, then:
 
 | Command | Action |
 | --- | --- |
-| `:MdView` | Toggle the configured mode; default is the full-window reader. |
+| `<leader>md` / `:MdView` | Toggle the configured mode; default is the full-window reader. |
 | `:MdViewOpen replace` | Open the reader in the source window. |
 | `:MdViewOpen split` | Keep source on the left and preview on the right. |
 | `:MdViewClose` | Close the preview and restore the source window. |
@@ -127,6 +130,7 @@ require("mdview").setup({
   theme = "nvim",           -- optional: "dark", "light", "nvim"
   preset = "fluid",         -- optional: raw + reader smoothing
   zbelow = true,            -- optional: allow popups to cover the raster
+  keymap = "<leader>md",    -- default: "<leader>md", set to false to disable
 })
 ```
 
@@ -143,6 +147,9 @@ require("mdview").setup({
 - **Layers:** `zbelow=true` requests local raw transport and a lower placement so
   popup backgrounds can cover the document. Failed terminal background/opacity
   detection retains normal placement with a warning.
+- **Keymap:** `keymap="<leader>md"` sets the normal-mode shortcut to toggle the
+  preview with the configured mode. Pass another string for a custom mapping or
+  `false` to disable.
 
 Raw falls back to PNG/image.nvim under SSH, tmux or missing Kitty identification.
 This does not make unsupported terminals compatible; PNG still needs a working

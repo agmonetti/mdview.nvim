@@ -27,6 +27,7 @@ No option installs packages or builds a renderer.
 | `alerts` | Literal quote markers | `true` renders the five GitHub alert types; `false` disables the transformation. See [GitHub alerts](#github-alerts). |
 | `mermaid` | Literal code fences | `true` uses the bundled renderer; `false` disables diagrams; `{renderer="/absolute/path/to/merman-cli"}` selects a custom executable. See [Mermaid](#mermaid). |
 | `html` | `true` | Enable the closed, sanitized HTML subset. `false` restores explicit rejection of raw HTML. |
+| `keymap` | `"<leader>md"` | Normal-mode keymap to toggle preview with configured mode. String or `false` to disable. |
 
 Explicit setup values override preset values and matching environment controls.
 `clamp=false` only disables the configured clamp when smoothing and the P3/C
