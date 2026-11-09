@@ -150,7 +150,7 @@ class Markdown {
             const auto& line = lines[n-1];
             size_t begin = n == start ? static_cast<size_t>(std::max(0, cmark_node_get_start_column(node)-1)) : 0;
             size_t stop = n == end ? static_cast<size_t>(std::max(0, cmark_node_get_end_column(node))) : line.size();
-            if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT) {
+            if (start == end) {
                 auto paragraph = cmark_node_parent(node);
                 while (paragraph && cmark_node_get_type(paragraph) != CMARK_NODE_PARAGRAPH)
                     paragraph = cmark_node_parent(paragraph);
@@ -158,14 +158,22 @@ class Markdown {
                 // cmark reports continuation columns after stripping physical indentation.
                 if (paragraph && cmark_node_get_start_line(paragraph) < start && first != std::string::npos) {
                     const auto container = static_cast<size_t>(std::max(0, cmark_node_get_start_column(paragraph)-1));
-                    const auto indent = first > container ? first - container : 0;
-                    begin += indent;
-                    stop += indent;
+                    if (first > container) {
+                        const auto indent = first - container;
+                        begin += indent;
+                        stop += indent;
+                    } else if (container > first && line[first] != '>') {
+                        const auto dedent = container - first;
+                        begin = begin > dedent ? begin - dedent : 0;
+                        stop = stop > dedent ? stop - dedent : 0;
+                    }
                 }
-                if (!text.empty() && first != std::string::npos && first != begin
-                    && line.compare(first, text.size(), text) == 0
-                    && line.find_first_not_of(" \t\r", first + text.size()) == std::string::npos)
-                    begin = first;
+                if (!code && cmark_node_get_type(node) == CMARK_NODE_TEXT) {
+                    if (!text.empty() && first != std::string::npos && first != begin
+                        && line.compare(first, text.size(), text) == 0
+                        && line.find_first_not_of(" \t\r", first + text.size()) == std::string::npos)
+                        begin = first;
+                }
             }
             stop = std::min(line.size(), stop);
             if (!code && start == end && cmark_node_get_type(node) == CMARK_NODE_TEXT
@@ -198,7 +206,7 @@ class Markdown {
         for (unsigned char c : text) {
             auto found = decoded.find(static_cast<char>(c), cursor);
             if (found == std::string::npos) {
-                if (!code && cmark_node_get_type(node) == CMARK_NODE_TEXT
+                if ((cmark_node_get_type(node) == CMARK_NODE_TEXT || cmark_node_get_type(node) == CMARK_NODE_CODE)
                     && start >= 1 && end >= start && end <= static_cast<int>(lines.size())) {
                     return coarse_text(node, text);
                 }
